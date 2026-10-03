@@ -21,9 +21,9 @@ Unidades: unidades GoldSrc (u). Escala aprox: 1u ~= 2.54cm
 - Distancia entre centroides CT-T: 1280 u.
 - Spawn enemigo-enemigo: min 1152 u, media 1337 u, max 1605 u.
 - Spawn mismo equipo mas cercano: 126 u; sightline max intra-equipo despejada: 781 u.
-- Coberturas (caras verticales 32-128u de alto): n=36, media 88.0 u, mediana 80.0 u.
+- Coberturas (caras verticales de worldspawn, 32-128u de alto): n=36, media 88.0 u, mediana 80.0 u.
 - Sightline maxima con LOS despejado entre enemigos (ojo a ojo, ojo = spawn+28u): 0 u (0/144 pares enemigos con LOS).
-- Armoury (24 entidades): weapon_mp5navy x2, weapon_tmp x2, weapon_p90 x2, weapon_mac10 x2, weapon_ak47 x2, weapon_sg552 x2, weapon_m4a1 x2, weapon_aug x2, weapon_awp x2, weapon_m3 x2, weapon_xm1014 x2, weapon_m249 x2.
+- Armoury (24 entidades): weapon_mp5navy x2, weapon_tmp x2, weapon_p90 x2, weapon_mac10 x2, weapon_ak47 x2, weapon_sg552 x2, weapon_m4a1 x2, weapon_aug x2, weapon_awp x2, weapon_m3 x2, weapon_xm1014 x2, weapon_m249 x2. De ellos, 2 asumidos como weapon_mp5navy: entidades sin clave `item` (default FGD 0).
 - Otras entidades: func_buyzone.
 
 ## fy_pool_day (poolday)
@@ -34,9 +34,9 @@ Unidades: unidades GoldSrc (u). Escala aprox: 1u ~= 2.54cm
 - Distancia entre centroides CT-T: 962 u.
 - Spawn enemigo-enemigo: min 635 u, media 1047 u, max 1436 u.
 - Spawn mismo equipo mas cercano: 102 u; sightline max intra-equipo despejada: 759 u.
-- Coberturas (caras verticales 32-128u de alto): n=395, media 77.8 u, mediana 80.0 u.
+- Coberturas (caras verticales de worldspawn, 32-128u de alto): n=395, media 77.8 u, mediana 80.0 u.
 - Sightline maxima con LOS despejado entre enemigos (ojo a ojo, ojo = spawn+28u): 1249 u (9/256 pares enemigos con LOS).
-- Armoury (34 entidades): weapon_mp5navy x2, weapon_tmp x2, weapon_p90 x2, weapon_mac10 x2, weapon_ak47 x2, weapon_sg552 x2, weapon_m4a1 x2, weapon_aug x2, weapon_scout x2, weapon_g3sg1 x2, weapon_awp x2, weapon_m3 x2, weapon_xm1014 x2, weapon_m249 x2, weapon_hegrenade x6.
+- Armoury (34 entidades): weapon_mp5navy x2, weapon_tmp x2, weapon_p90 x2, weapon_mac10 x2, weapon_ak47 x2, weapon_sg552 x2, weapon_m4a1 x2, weapon_aug x2, weapon_scout x2, weapon_g3sg1 x2, weapon_awp x2, weapon_m3 x2, weapon_xm1014 x2, weapon_m249 x2, weapon_hegrenade x6. De ellos, 2 asumidos como weapon_mp5navy: entidades sin clave `item` (default FGD 0).
 - Otras entidades: ambient_generic, func_bomb_target, func_button, func_buyzone, func_door_rotating, func_illusionary, func_wall, func_water.
 
 ## he_tennis (tennis)
@@ -47,7 +47,7 @@ Unidades: unidades GoldSrc (u). Escala aprox: 1u ~= 2.54cm
 - Distancia entre centroides CT-T: 359 u.
 - Spawn enemigo-enemigo: min 231 u, media 382 u, max 554 u.
 - Spawn mismo equipo mas cercano: 64 u; sightline max intra-equipo despejada: 287 u.
-- Coberturas (caras verticales 32-128u de alto): n=225, media 57.5 u, mediana 40.0 u.
+- Coberturas (caras verticales de worldspawn, 32-128u de alto): n=225, media 57.5 u, mediana 40.0 u.
 - Sightline maxima con LOS despejado entre enemigos (ojo a ojo, ojo = spawn+28u): 554 u (100/100 pares enemigos con LOS).
 - Armoury (40 entidades): weapon_hegrenade x40.
 - Otras entidades: func_buyzone, func_wall, game_player_equip, info_target, trigger_camera.
@@ -56,6 +56,7 @@ Unidades: unidades GoldSrc (u). Escala aprox: 1u ~= 2.54cm
 
 - Parser BSP30 propio: lumps de entidades, planos, vertices, aristas, surfaristas, caras y models; sin dependencias.
 - Bounds = bbox del model 0 (worldspawn). Incluye cielo/caja del mapa; el area jugable es menor o igual.
-- Cobertura = cara con plano near-vertical (|nz| <= 0.2) cuya altura cae en [32, 128]u: excluye escalones/cordones (<32u) y muros perimetrales/rascacielos (>128u). Heuristica, no semantica de gameplay.
-- LOS: segmento ojo-a-ojo entre cada par CT-T contra las caras del model 0 (worldspawn) como bloqueadores de doble cara. Se excluyen brush entities (puertas cerradas bloquearian mas; buyzones y triggers no ocluyen). Se ignoran rozamientos coplanares. Verificado con un segundo metodo 2D independiente.
+- Cobertura = cara de worldspawn con plano near-vertical (|nz| <= 0.2) cuya altura cae en [32, 128]u: excluye escalones/cordones (<32u) y muros perimetrales/rascacielos (>128u). Heuristica, no semantica de gameplay.
+- LOS: segmento ojo-a-ojo entre cada par CT-T contra worldspawn + brush models visibles en pose base (func_wall, func_door_rotating, func_water, func_illusionary, func_button) como bloqueadores de doble cara. Solo se excluyen volumenes invisibles: func_buyzone, func_bomb_target y trigger_*/info_*/game_*. Las puertas se consideran cerradas: si abren en juego, los pares despejados son cota inferior. Se ignoran rozamientos coplanares. Verificado con un segundo metodo 2D independiente.
+- Armoury: entidades sin clave `item` se asumen item=0 (default FGD = weapon_mp5navy); la linea de armoury de cada mapa indica cuantos fueron asumidos.
 - Ojo = origin del spawn + 28u (= 64u sobre los pies en pie). Verificado: los spawns flotan 1-33u sobre el suelo y origin = pies+36u.

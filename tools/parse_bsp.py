@@ -64,6 +64,12 @@ EYE_ABOVE_SPAWN = 28.0
 VERT_NZ = 0.2
 # Banda de "cobertura": ni escalones/cordones (<32u) ni muros (<128u+).
 COVER_LO, COVER_HI = 32.0, 128.0
+# Brush entities que NO ocluyen vision (volumenes de gameplay invisibles).
+# Todo otro brush model visible en pose base (func_wall, func_door_rotating,
+# func_water, func_illusionary, func_button) SI ocluye y entra en el set de
+# bloqueadores LOS. Los prefijos cubren point entities por si trajeran "model".
+NON_OCCLUDING_PREFIXES = ("trigger_", "info_", "game_", "ambient_")
+NON_OCCLUDING_BRUSH = {"func_buyzone", "func_bomb_target"}
 
 
 def parse_entities(raw: bytes):
@@ -143,14 +149,14 @@ class BSP30:
         return mins, maxs
 
     def model0_face_range(self):
-        """(firstface, numfaces) del model 0 = solo geometria worldspawn.
+        """(firstface, numfaces) del model 0 = solo geometria worldspawn."""
+        return self.model_face_range(0)
 
-        Las caras de brush entities (puertas, buyzones, triggers) se excluyen:
-        son volumenes de gameplay, no oclusion visual estatica.
-        """
-        off, _ln = self.lump(L_MODELS)
-        first, num = struct.unpack_from("<ii", self.data, off + 56)
-        return first, num
+    def model_face_range(self, idx):
+        off, ml = self.lump(L_MODELS)
+        n = ml // 64
+        assert 0 <= idx < n, f"brush model *{idx} fuera de rango (n={n})"
+        return struct.unpack_from("<ii", self.data, off + 64 * idx + 56)
 
 
 def face_polygons(bsp, first=0, count=None):
@@ -184,6 +190,28 @@ def face_polygons(bsp, first=0, count=None):
         poly = [(p[axes[0]], p[axes[1]]) for p in pts]
         out.append(((nx, ny, nz, dist), bb, poly, axes))
     return out
+
+
+def occluder_polys(bsp, ents):
+    """Poligonos que bloquean vision: worldspawn + brush models visibles.
+
+    Solo se excluyen volumenes de gameplay invisibles (NON_OCCLUDING_BRUSH y
+    prefijos NON_OCCLUDING_PREFIXES). Puertas rotatorias etc. se consideran en
+    pose base (cerradas): los conteos despejados son cota inferior si abren.
+    """
+    ranges = [bsp.model0_face_range()]
+    for e in ents:
+        m = e.get("model", "")
+        if not m.startswith("*"):
+            continue
+        cls = e.get("classname", "")
+        if cls in NON_OCCLUDING_BRUSH or cls.startswith(NON_OCCLUDING_PREFIXES):
+            continue
+        ranges.append(bsp.model_face_range(int(m[1:])))
+    polys = []
+    for first, count in ranges:
+        polys.extend(face_polygons(bsp, first, count))
+    return polys
 
 
 def segment_blocked(a, b, blockers):
@@ -236,7 +264,10 @@ def measure(label, path):
 
     armoury = [e for e in ents if e.get("classname") == "armoury_entity"]
     counts = {}
+    defaulted = 0  # entidades sin clave "item": se asume default FGD = 0
     for e in armoury:
+        if "item" not in e:
+            defaulted += int(e.get("count", "1"))
         item = int(e.get("item", "0"))
         counts[item] = counts.get(item, 0) + int(e.get("count", "1"))
     extras = sorted({e.get("classname") for e in ents} - {
@@ -267,15 +298,20 @@ def measure(label, path):
 
     m0_first, m0_num = bsp.model0_face_range()
     assert m0_num > 0, f"{label}: model 0 sin caras"
-    polys = face_polygons(bsp, m0_first, m0_num)
-    assert len(polys) > 0, f"{label}: sin caras"
+    # Coberturas: arquitectura estatica (worldspawn). Los bloqueadores LOS
+    # anaden ademas los brush models visibles (ver occluder_polys).
+    covers = face_polygons(bsp, m0_first, m0_num)
+    assert len(covers) > 0, f"{label}: sin caras"
     cover_h = []
-    for (nx, ny, nz, _d), bb, _poly, _axes in polys:
+    for (nx, ny, nz, _d), bb, _poly, _axes in covers:
         if abs(nz) <= VERT_NZ:
             h = bb[5] - bb[4]
             if COVER_LO <= h <= COVER_HI:
                 cover_h.append(h)
     assert len(cover_h) > 0, f"{label}: sin caras de cobertura"
+
+    polys = occluder_polys(bsp, ents)
+    assert len(polys) >= len(covers), f"{label}: set de bloqueadores vacio"
 
     eyes_ct = [(x, y, z + EYE_ABOVE_SPAWN) for x, y, z in ct]
     eyes_te = [(x, y, z + EYE_ABOVE_SPAWN) for x, y, z in te]
@@ -313,6 +349,7 @@ def measure(label, path):
         "sight_clear": len(clear), "sight_pairs": len(cross),
         "intra_sight_max": max(intra_clear) if intra_clear else 0.0,
         "armoury": counts, "n_armoury_ents": len(armoury),
+        "armoury_defaulted": defaulted,
         "extras": extras,
     }
 
@@ -363,15 +400,20 @@ def render_markdown(rows):
         L.append(f"- Spawn mismo equipo mas cercano: {m['intra_min']:.0f} u; "
                  f"sightline max intra-equipo despejada: "
                  f"{m['intra_sight_max']:.0f} u.")
-        L.append(f"- Coberturas (caras verticales {COVER_LO:.0f}-{COVER_HI:.0f}u "
+        L.append(f"- Coberturas (caras verticales de worldspawn, "
+                 f"{COVER_LO:.0f}-{COVER_HI:.0f}u "
                  f"de alto): n={m['n_covers']}, media {m['cover_mean']:.1f} u, "
                  f"mediana {m['cover_median']:.1f} u.")
         L.append(f"- Sightline maxima con LOS despejado entre enemigos (ojo a ojo, "
                  f"ojo = spawn+{EYE_ABOVE_SPAWN:.0f}u): {m['sight_max']:.0f} u "
                  f"({m['sight_clear']}/{m['sight_pairs']} pares enemigos con LOS).")
-        L.append(f"- Armoury ({m['n_armoury_ents']} entidades): " +
-                 ", ".join(f"{ARMOURY.get(k, f'desconocido({k})')} x{v}"
-                           for k, v in sorted(m["armoury"].items())) + ".")
+        arm_line = (f"- Armoury ({m['n_armoury_ents']} entidades): " +
+                  ", ".join(f"{ARMOURY.get(k, f'desconocido({k})')} x{v}"
+                            for k, v in sorted(m["armoury"].items())) + ".")
+        if m["armoury_defaulted"]:
+            arm_line += (f" De ellos, {m['armoury_defaulted']} asumidos como "
+                         "weapon_mp5navy: entidades sin clave `item` (default FGD 0).")
+        L.append(arm_line)
         if m["extras"]:
             L.append(f"- Otras entidades: {', '.join(m['extras'])}.")
         L.append("")
@@ -381,15 +423,21 @@ def render_markdown(rows):
              "surfaristas, caras y models; sin dependencias.")
     L.append("- Bounds = bbox del model 0 (worldspawn). Incluye cielo/caja del mapa; "
              "el area jugable es menor o igual.")
-    L.append("- Cobertura = cara con plano near-vertical (|nz| <= "
+    L.append("- Cobertura = cara de worldspawn con plano near-vertical (|nz| <= "
              f"{VERT_NZ}) cuya altura cae en [{COVER_LO:.0f}, {COVER_HI:.0f}]u: "
              "excluye escalones/cordones (<32u) y muros perimetrales/rascacielos "
              "(>128u). Heuristica, no semantica de gameplay.")
-    L.append("- LOS: segmento ojo-a-ojo entre cada par CT-T contra las caras del "
-             "model 0 (worldspawn) como bloqueadores de doble cara. Se excluyen "
-             "brush entities (puertas cerradas bloquearian mas; buyzones y "
-             "triggers no ocluyen). Se ignoran rozamientos coplanares. "
+    L.append("- LOS: segmento ojo-a-ojo entre cada par CT-T contra worldspawn + "
+             "brush models visibles en pose base (func_wall, func_door_rotating, "
+             "func_water, func_illusionary, func_button) como bloqueadores de "
+             "doble cara. Solo se excluyen volumenes invisibles: func_buyzone, "
+             "func_bomb_target y trigger_*/info_*/game_*. Las puertas se consideran "
+             "cerradas: si abren en juego, los pares despejados son cota inferior. "
+             "Se ignoran rozamientos coplanares. "
              "Verificado con un segundo metodo 2D independiente.")
+    L.append("- Armoury: entidades sin clave `item` se asumen item=0 (default FGD = "
+             "weapon_mp5navy); la linea de armoury de cada mapa indica cuantos "
+             "fueron asumidos.")
     L.append("- Ojo = origin del spawn + 28u (= 64u sobre los pies en pie). "
              "Verificado: los spawns flotan 1-33u sobre el suelo y origin = pies+36u.")
     L.append("")
