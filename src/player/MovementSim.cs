@@ -40,6 +40,11 @@ public sealed class MovementSim
         {
             if (input.JumpPressed)
             {
+                // Jump tick still steers: air-accelerate applies before
+                // leaving the floor (Task 5 carried fix for the 1-tick
+                // horizontal freeze; wishdir here is typically the bhop
+                // strafe direction held through the jump).
+                vel = Accelerate(vel, wishDirN, wishSpeed, p.AirAccelerate, delta);
                 vel.Y = p.JumpVelocity;
                 IsOnFloor = false;
             }

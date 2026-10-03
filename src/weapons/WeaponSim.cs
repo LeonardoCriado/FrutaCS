@@ -95,23 +95,48 @@ public sealed class WeaponSim
     /// deal full damage inside reach, nothing beyond, and never penetrate.
     /// </summary>
     public int DamageAt(float distU, bool wall, float wallU)
+        => DamageAt(distU, wall ? 1 : 0, wallU, false);
+
+    /// <summary>
+    /// Secondary-attack path (knife fast slash reads <see cref="WeaponStats.SecondaryDamage"/>).
+    /// Rifles/AWP leave SecondaryDamage at 0, so secondary fire deals nothing.
+    /// </summary>
+    public int DamageAt(float distU, bool wall, float wallU, bool secondaryAttack)
+        => DamageAt(distU, wall ? 1 : 0, wallU, secondaryAttack);
+
+    /// <summary>
+    /// Staged wall penetration: each wall crossed keeps
+    /// <see cref="WallDamageMult"/> (1.6 CHAR_TEX_WOOD), gated per wall by
+    /// MaxWallThicknessU. More walls than <see cref="WeaponStats.PenetrationStages"/>
+    /// stops the bullet (1.6 FireBullets3 stage count). Melee never penetrates.
+    /// wallU is the thickest wall crossed (conservative single-value gate).
+    /// </summary>
+    public int DamageAt(float distU, int walls, float wallU)
+        => DamageAt(distU, walls, wallU, false);
+
+    public int DamageAt(float distU, int walls, float wallU, bool secondaryAttack)
     {
         if (distU < 0f)
             distU = 0f;
+        if (walls < 0)
+            walls = 0;
+        float baseDamage = secondaryAttack ? _stats.SecondaryDamage : _stats.Damage;
         if (_stats.MeleeRangeU > 0f)
         {
-            if (wall || distU > _stats.MeleeRangeU)
+            if (walls > 0 || distU > _stats.MeleeRangeU)
                 return 0;
-            return (int)_stats.Damage;
+            return (int)baseDamage;
         }
-        float dmg = _stats.Damage * MathF.Pow(_stats.RangeModifier, distU / RangeBlockU);
-        if (wall)
+        float dmg = baseDamage * MathF.Pow(_stats.RangeModifier, distU / RangeBlockU);
+        if (walls > 0)
         {
             if (wallU < 0f)
                 wallU = 0f;
             if (_stats.MaxWallThicknessU <= 0f || wallU > _stats.MaxWallThicknessU)
                 return 0;
-            dmg *= WallDamageMult;
+            if (_stats.PenetrationStages <= 0 || walls > _stats.PenetrationStages)
+                return 0;
+            dmg *= MathF.Pow(WallDamageMult, walls);
         }
         return Math.Max(0, (int)dmg);
     }
