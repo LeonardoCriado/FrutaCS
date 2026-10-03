@@ -106,6 +106,7 @@ public partial class PlayerBody : CharacterBody3D
     public override void _Ready()
     {
         EnsureInputActions();
+        AddToGroup("players"); // Lets Bot AI sense the player as an enemy.
         _params = Config != null ? Config.ToParams() : MovementParams.Default;
         Head = GetNode<Node3D>("Head");
         Camera = GetNode<Camera3D>("Head/Camera3D");
