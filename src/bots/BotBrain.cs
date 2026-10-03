@@ -53,12 +53,12 @@ public readonly record struct BotDecision(
 /// <list type="bullet">
 /// <item>Patrol: better gun nearby -> Pickup; enemy in cone+range -> Chase;
 /// heard shot -> Chase (investigate); else keep patrolling.</item>
-/// <item>Chase: close into AttackRange with sight -> Attack; no sight for
-/// LoseSightSec -> Patrol. Gun detours never interrupt a fight (pickup only
-/// from Patrol).</item>
+/// <item>Chase: close into AttackRange with sight -> Attack; no stimulus
+/// (sight or shot) for LoseSightSec -> Patrol. Gun detours never interrupt
+/// a fight (pickup only from Patrol).</item>
 /// <item>Attack: hold on the enemy; WantFire only after ReactionSec of
 /// continuous engagement. Lost sight or out of range -> Chase (re-acquire)
-/// until LoseSightSec expires -> Patrol.</item>
+/// until LoseSightSec without stimulus expires -> Patrol.</item>
 /// <item>Pickup: walk to the gun; sighting an enemy interrupts -> Chase;
 /// gun gone -> Patrol.</item>
 /// </list>
@@ -97,6 +97,17 @@ public sealed class BotBrain
         if (seen)
         {
             _lastKnownEnemy = p.EnemyPos;
+            _hasLastKnown = true;
+            _timeSinceSeen = 0f;
+        }
+        else if (p.HeardShot)
+        {
+            // Hearing is stimulus too: a shot resets the same timer the
+            // Patrol-return rule expires on, and its position becomes the
+            // investigation point after the glue's 1 s latch expires.
+            // Without this, Patrol --shot--> Chase returns to Patrol on
+            // the very next tick whenever the timer already ran out.
+            _lastKnownEnemy = p.HeardPos;
             _hasLastKnown = true;
             _timeSinceSeen = 0f;
         }

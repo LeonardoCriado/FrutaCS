@@ -42,6 +42,7 @@ public partial class Bot : CharacterBody3D
     private const float PatrolHalfU = 850f;
     private const float MaxHp = 100f;
     private const float KnifeIntervalSec = 0.4f;
+    private const float UnstickDetourSec = 3f;
 
     [Export] public int Team;
     [Export] public MovementConfig Config;
@@ -79,6 +80,8 @@ public partial class Bot : CharacterBody3D
     private bool _reloading;
     private float _reloadTimerSec;
     private float _stillSec;
+    private Vector3 _unstickPoint = Vector3.Zero;
+    private float _unstickSec;
     private bool _nearbyTaken = true;
     private Vector3 _nearbyPos = Vector3.Zero;
     private int _nearbyTier;
@@ -258,13 +261,28 @@ public partial class Bot : CharacterBody3D
     private void Steer(BotDecision decision, float dt)
     {
         float stopDist = decision.State == BotState.Attack ? AttackHoldU : ArriveU;
-        Vector3 toTarget = decision.MoveTarget - GlobalPosition;
+        Vector3 brainToTarget = decision.MoveTarget - GlobalPosition;
+        brainToTarget.Y = 0f;
+
+        // Unstick detour overrides the ACTIVE goal (not just _patrolPoint):
+        // a Chase/Pickup snagged on geometry ignores patrol repicks.
+        Vector3 goal = decision.MoveTarget;
+        if (_unstickSec > 0f)
+        {
+            _unstickSec -= dt;
+            goal = _unstickPoint;
+            Vector3 toUnstick = _unstickPoint - GlobalPosition;
+            toUnstick.Y = 0f;
+            if (toUnstick.Length() < ArriveU)
+                _unstickSec = 0f;
+        }
+        Vector3 toTarget = goal - GlobalPosition;
         toTarget.Y = 0f;
         Vector3 wish = Vector3.Zero;
         if (toTarget.Length() > stopDist)
         {
             if (_agent != null)
-                _agent.TargetPosition = decision.MoveTarget;
+                _agent.TargetPosition = goal;
             Vector3 next = _agent != null ? _agent.GetNextPathPosition() - GlobalPosition : toTarget;
             next.Y = 0f;
             wish = next.Length() > 1f ? next.Normalized() : toTarget.Normalized();
@@ -284,10 +302,13 @@ public partial class Bot : CharacterBody3D
         if (face.Length() > 1f)
             Rotation = new Vector3(0f, Mathf.Atan2(-face.X, -face.Z), 0f);
 
-        // Anti-stuck: commanded far but barely moving outside combat ->
-        // abandon the point, not the match (acceptance: none stuck > 5 s).
+        // Anti-stuck: brain commands far but the body barely moves outside
+        // combat -> detour the body itself, not just the patrol point
+        // (acceptance: none stuck > 5 s; Task 8's real map is not flat).
         Vector3 h = new(_sim.Velocity.X, 0f, _sim.Velocity.Z);
-        if (decision.State != BotState.Attack && toTarget.Length() > 128f && h.Length() < 5f)
+        if (_unstickSec > 0f)
+            _stillSec = 0f; // Detour in progress: it gets a clean attempt.
+        else if (decision.State != BotState.Attack && brainToTarget.Length() > 128f && h.Length() < 5f)
             _stillSec += dt;
         else
             _stillSec = 0f;
@@ -295,6 +316,8 @@ public partial class Bot : CharacterBody3D
         {
             _stillSec = 0f;
             _patrolPoint = PickPatrolPoint();
+            _unstickPoint = PickUnstickPoint();
+            _unstickSec = UnstickDetourSec;
         }
     }
 
@@ -385,6 +408,18 @@ public partial class Bot : CharacterBody3D
             _rng.RandfRange(-PatrolHalfU, PatrolHalfU),
             0f,
             _rng.RandfRange(-PatrolHalfU, PatrolHalfU));
+    }
+
+    /// <summary>Short sidestep for the unstick detour: near enough to finish
+    /// inside <see cref="UnstickDetourSec"/>, after which the brain retries
+    /// its original goal (possibly from a better angle).</summary>
+    private Vector3 PickUnstickPoint()
+    {
+        float angle = _rng.Randf() * Mathf.Tau;
+        float dist = _rng.RandfRange(200f, 350f);
+        Vector3 p = GlobalPosition + new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
+        p.Y = 0f;
+        return p;
     }
 
     private void PaintTeamColor()

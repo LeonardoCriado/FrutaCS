@@ -128,6 +128,40 @@ public class BotBrainTests
     }
 
     [TestCase]
+    public void HeardShotTransitionsToChaseAndPersists()
+    {
+        // 10 s of silence first: the lose-sight timer is long expired, so a
+        // pre-fix brain would Patrol -> Chase -> Patrol on consecutive ticks.
+        var brain = new BotBrain();
+        var p = BotParams.Default;
+        var blind = PatrolPerception(Vector3.Zero, new Vector3(500f, 0f, 500f));
+        BotDecision d = brain.Update(blind, p, Delta);
+        for (int i = 0; i < 600; i++)
+            d = brain.Update(blind, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Patrol);
+        var heard = new BotPerception(
+            Vector3.Zero, Vector3.Forward,
+            false, Vector3.Zero,
+            true, new Vector3(300f, 0f, 300f),
+            false, Vector3.Zero, 0, 1,
+            new Vector3(500f, 0f, 500f));
+        d = brain.Update(heard, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Chase);
+        Assertions.AssertThat(d.MoveTarget == new Vector3(300f, 0f, 300f)).IsTrue();
+        for (int i = 0; i < 30; i++)
+            d = brain.Update(heard, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Chase);
+        Assertions.AssertThat(d.MoveTarget == new Vector3(300f, 0f, 300f)).IsTrue();
+        // Shot memory gone, still no sight: keeps investigating the heard
+        // position instead of snapping back to patrol.
+        for (int i = 0; i < 60; i++)
+            d = brain.Update(blind, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Chase);
+        Assertions.AssertThat(d.MoveTarget == new Vector3(300f, 0f, 300f)).IsTrue();
+        Assertions.AssertThat(d.WantFire).IsFalse();
+    }
+
+    [TestCase]
     public void EnemyBehindStaysPatrol()
     {
         // 500 u behind the facing (-Z): outside the 90 deg cone -> ignored.
