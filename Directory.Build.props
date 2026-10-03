@@ -1,0 +1,17 @@
+<Project>
+  <!-- The game .csproj lives in src/, but the Godot project root
+       (project.godot) is this directory. Godot.NET.Sdk defaults
+       GodotProjectDir to the .csproj dir, so set it here for every project
+       (the test project also needs it for Godot source generators).
+       Build-path overrides apply to Godot SDK projects only and must be set
+       here (before Microsoft.Common.props) to avoid MSB3539. -->
+  <PropertyGroup>
+    <GodotProjectDir>$(MSBuildThisFileDirectory)</GodotProjectDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(UsingGodotNETSdk)' == 'true'">
+    <BaseOutputPath>$(GodotProjectDir).godot\mono\temp\bin\</BaseOutputPath>
+    <OutputPath>$(GodotProjectDir).godot\mono\temp\bin\$(Configuration)\</OutputPath>
+    <BaseIntermediateOutputPath>$(GodotProjectDir).godot\mono\temp\obj\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>$(GodotProjectDir).godot\mono\temp\obj\$(Configuration)\</IntermediateOutputPath>
+  </PropertyGroup>
+</Project>
