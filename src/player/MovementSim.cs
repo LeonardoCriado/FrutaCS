@@ -5,9 +5,11 @@ namespace FrutaCS.Player;
 
 /// <summary>
 /// Per-tick player intent. WishDir is a horizontal direction; its length
-/// scales the wish speed (0 = no input, 1 = full run).
+/// scales the wish speed (0 = no input, 1 = full speed). Walk selects
+/// WalkSpeed instead of RunSpeed as the speed base (explicit flag — duck
+/// and other modifiers do not ride this path).
 /// </summary>
-public readonly record struct MovementInput(Vector3 WishDir, bool JumpPressed);
+public readonly record struct MovementInput(Vector3 WishDir, bool JumpPressed, bool Walk);
 
 /// <summary>
 /// Pure Quake/GoldSrc-style movement simulation. Engine-free: only
@@ -23,6 +25,20 @@ public sealed class MovementSim
     public Vector3 Velocity { get; private set; } = Vector3.Zero;
     public bool IsOnFloor { get; private set; } = true;
 
+    /// <summary>
+    /// Write back the engine result after MoveAndSlide: floor contact and
+    /// wall-clipped velocity are authoritative. Without this the sim drifts
+    /// from the body (stuck-Air stance, gravity integrating while landed,
+    /// retained velocity pushing through walls).
+    /// </summary>
+    public void SyncFromEngine(Vector3 clippedVelocity, bool engineOnFloor)
+    {
+        Velocity = clippedVelocity;
+        IsOnFloor = engineOnFloor;
+        if (engineOnFloor)
+            _height = 0f;
+    }
+
     public void Tick(in MovementInput input, in MovementParams p, float delta)
     {
         Vector3 wishDir = new(input.WishDir.X, 0f, input.WishDir.Z);
@@ -32,7 +48,8 @@ public sealed class MovementSim
         if (wishLen > 0.0001f)
         {
             wishDirN = wishDir / wishLen;
-            wishSpeed = p.RunSpeed * MathF.Min(1f, wishLen);
+            float baseSpeed = input.Walk ? p.WalkSpeed : p.RunSpeed;
+            wishSpeed = baseSpeed * MathF.Min(1f, wishLen);
         }
 
         Vector3 vel = Velocity;
@@ -63,11 +80,18 @@ public sealed class MovementSim
         }
 
         Velocity = vel;
+        float prevHeight = _height;
         _height += vel.Y * delta;
         if (_height <= 0f)
         {
             _height = 0f;
-            if (vel.Y <= 0f)
+            // Landing requires crossing the plane from above. At rest height
+            // with engine-authoritative floor (SyncFromEngine), a single
+            // gravity tick must keep falling so MoveAndSlide can establish
+            // real contact — otherwise the branch eats the fall impulse every
+            // frame and the body hovers forever. Walking off a ledge
+            // (synced airborne at height 0) correctly keeps falling too.
+            if (prevHeight > 0f && vel.Y <= 0f)
             {
                 Velocity = new Vector3(vel.X, 0f, vel.Z);
                 IsOnFloor = true;

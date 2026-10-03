@@ -22,8 +22,10 @@ public static class InputActions
 /// Feet at the origin; capsule 72u tall, camera (Head) at 64u.
 /// Drives the sim from _PhysicsProcess at the fixed 60 Hz physics tick
 /// (project.godot physics_ticks_per_second=60, so `delta` is 1/60).
-/// Walk (Shift) scales the wish-dir length by WalkSpeed/RunSpeed — the sim
-/// maps wish length to wish speed, so no MovementInput change was needed.
+/// Walk (Shift) sets the explicit <see cref="MovementInput"/> Walk flag so the
+/// sim uses WalkSpeed; duck is stance + eye height only and does not touch speed.
+/// After MoveAndSlide the engine result (floor contact, wall-clipped velocity)
+/// is written back into the sim via SyncFromEngine — engine state is authoritative.
 /// Owns mouse look (yaw on the body, pitch on the camera) and adds the
 /// weapon's recoverable view punch on top of the pitch.
 /// </summary>
@@ -71,18 +73,8 @@ public partial class PlayerBody : CharacterBody3D
         AddKeyAction(InputActions.Walk, Key.Shift);
         AddKeyAction(InputActions.Duck, Key.Ctrl, Key.C);
         AddKeyAction(InputActions.Reload, Key.R);
-        if (!InputMap.HasAction(InputActions.Fire))
-        {
-            InputMap.AddAction(InputActions.Fire);
-            var mb = new InputEventMouseButton { ButtonIndex = MouseButton.Left };
-            InputMap.ActionAddEvent(InputActions.Fire, mb);
-        }
-        if (!InputMap.HasAction(InputActions.Secondary))
-        {
-            InputMap.AddAction(InputActions.Secondary);
-            var mb = new InputEventMouseButton { ButtonIndex = MouseButton.Right };
-            InputMap.ActionAddEvent(InputActions.Secondary, mb);
-        }
+        AddMouseAction(InputActions.Fire, MouseButton.Left);
+        AddMouseAction(InputActions.Secondary, MouseButton.Right);
     }
 
     private static void AddKeyAction(string action, params Key[] keys)
@@ -97,6 +89,18 @@ public partial class PlayerBody : CharacterBody3D
             var ev = new InputEventKey { PhysicalKeycode = k };
             InputMap.ActionAddEvent(action, ev);
         }
+    }
+
+    private static void AddMouseAction(string action, MouseButton button)
+    {
+        if (!InputMap.HasAction(action))
+            InputMap.AddAction(action);
+        // Same idempotent guard as keys: a pre-defined but empty action
+        // still gets its default bind; existing binds are never stacked.
+        if (InputMap.ActionGetEvents(action).Count > 0)
+            return;
+        var mb = new InputEventMouseButton { ButtonIndex = button };
+        InputMap.ActionAddEvent(action, mb);
     }
 
     public override void _Ready()
@@ -138,16 +142,15 @@ public partial class PlayerBody : CharacterBody3D
             wishDir = wishDir.Normalized();
 
         IsDucking = Input.IsActionPressed(InputActions.Duck);
-        bool walkHeld = Input.IsActionPressed(InputActions.Walk) || IsDucking;
-        if (walkHeld && _params.RunSpeed > 0f)
-            wishDir *= _params.WalkSpeed / _params.RunSpeed;
+        bool walkHeld = Input.IsActionPressed(InputActions.Walk);
 
         bool jumpPressed = Input.IsActionJustPressed(InputActions.Jump);
-        var input = new MovementInput(wishDir, jumpPressed);
+        var input = new MovementInput(wishDir, jumpPressed, walkHeld);
         _sim.Tick(in input, in _params, dt);
 
         Velocity = _sim.Velocity;
         MoveAndSlide();
+        _sim.SyncFromEngine(Velocity, IsOnFloor());
 
         Vector3 h = new(_sim.Velocity.X, 0f, _sim.Velocity.Z);
         HorizontalSpeedU = h.Length();

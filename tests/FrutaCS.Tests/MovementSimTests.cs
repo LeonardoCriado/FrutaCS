@@ -17,7 +17,7 @@ public class MovementSimTests
     {
         var sim = FreshSim();
         var p = MovementParams.Default;
-        var input = new MovementInput(Vector3.Forward, false);
+        var input = new MovementInput(Vector3.Forward, false, false);
         for (int i = 0; i < 120; i++)
             sim.Tick(in input, in p, Delta);
         float speed = new Vector3(sim.Velocity.X, 0f, sim.Velocity.Z).Length();
@@ -26,21 +26,36 @@ public class MovementSimTests
     }
 
     [TestCase]
+    public void WalkFlagCapsSpeedAtWalkSpeed()
+    {
+        var sim = FreshSim();
+        var p = MovementParams.Default;
+        // Full-length wish with Walk set: speed base is WalkSpeed (130),
+        // not RunSpeed — no wishdir-length scaling involved.
+        var walk = new MovementInput(Vector3.Forward, false, true);
+        for (int i = 0; i < 120; i++)
+            sim.Tick(in walk, in p, Delta);
+        float speed = new Vector3(sim.Velocity.X, 0f, sim.Velocity.Z).Length();
+        Assertions.AssertThat(sim.IsOnFloor).IsTrue();
+        Assertions.AssertThat(speed > 120f && speed < 140f).IsTrue();
+    }
+
+    [TestCase]
     public void AirStrafeGainsSpeedWithoutCap()
     {
         var sim = FreshSim();
         var p = MovementParams.Default;
         // Build full run speed on the ground first.
-        var run = new MovementInput(Vector3.Forward, false);
+        var run = new MovementInput(Vector3.Forward, false, false);
         for (int i = 0; i < 60; i++)
             sim.Tick(in run, in p, Delta);
         // Leave the floor with a jump, keeping horizontal velocity.
-        var jump = new MovementInput(Vector3.Zero, true);
+        var jump = new MovementInput(Vector3.Zero, true, false);
         sim.Tick(in jump, in p, Delta);
         Assertions.AssertThat(sim.IsOnFloor).IsFalse();
         // Strafe perpendicular to motion while airborne: Quake-style
         // air-accelerate with no cap must keep adding speed.
-        var strafe = new MovementInput(Vector3.Right, false);
+        var strafe = new MovementInput(Vector3.Right, false, false);
         for (int i = 0; i < 30; i++)
             sim.Tick(in strafe, in p, Delta);
         float speed = new Vector3(sim.Velocity.X, 0f, sim.Velocity.Z).Length();
@@ -53,10 +68,10 @@ public class MovementSimTests
     {
         var sim = FreshSim();
         var p = MovementParams.Default;
-        var run = new MovementInput(Vector3.Forward, false);
+        var run = new MovementInput(Vector3.Forward, false, false);
         for (int i = 0; i < 60; i++)
             sim.Tick(in run, in p, Delta);
-        var idle = new MovementInput(Vector3.Zero, false);
+        var idle = new MovementInput(Vector3.Zero, false, false);
         for (int i = 0; i < 120; i++)
             sim.Tick(in idle, in p, Delta);
         float speed = new Vector3(sim.Velocity.X, 0f, sim.Velocity.Z).Length();
@@ -70,7 +85,7 @@ public class MovementSimTests
         var sim = FreshSim();
         var p = MovementParams.Default;
         Assertions.AssertThat(sim.IsOnFloor).IsTrue();
-        var jump = new MovementInput(Vector3.Zero, true);
+        var jump = new MovementInput(Vector3.Zero, true, false);
         sim.Tick(in jump, in p, Delta);
         Assertions.AssertThat(sim.IsOnFloor).IsFalse();
         Assertions.AssertThat(sim.Velocity.Y > 0f).IsTrue();
