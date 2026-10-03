@@ -1,0 +1,46 @@
+; Desert Eagle table — Counter-Strike 1.6 reference values.
+; Scalars: https://csjs.live/weapons/deagle (54 dmg, 75% armor, 267 RPM /
+; 0.225 s effective cycle, 81% per 500 u, 2 penetration stages, 7+35 ammo,
+; 250 u/s), cross-checked with https://counterstrike.fandom.com/wiki/Desert_Eagle.
+; Code constants: https://github.com/s1lentq/ReGameDLL_CS
+; - regamedll/dlls/weapons.h: DEAGLE_DAMAGE 54, DEAGLE_RANGE_MODIFER 0.81,
+;   DEAGLE_MAX_SPEED 250.
+; - regamedll/dlls/wpn_shared/wpn_deagle.cpp PrimaryAttack: air 1.5*(1-acc),
+;   move(>0u/s) 0.25*(1-acc), duck 0.115*(1-acc), stand 0.13*(1-acc);
+;   effective cycle 0.3-0.075 = 0.225 s; FireBullets3 penetration 2,
+;   BULLET_PLAYER_50AE. First-shot spreads below use fresh accuracy 0.9,
+;   atan(spread) to degrees: stand 0.7448, duck 0.6589, move 1.4321,
+;   air 8.5308.
+; - regamedll/dlls/weapontype.h: DEAGLE_MAX_CLIP 7, MAX_AMMO_50AE 35.
+; - regamedll/dlls/player.cpp TraceAttack: HITGROUP_HEAD damage x4;
+;   TakeDamage: ARMOR_RATIO 0.5 x 1.5 (WEAPON_DEAGLE) = 0.75.
+; - regamedll/dlls/cbase.cpp FireBullets3: falloff pow(rangeMod, dist/500);
+;   wall damage x0.6 (CHAR_TEX_WOOD), penetration skip 30 u/stage
+;   (BULLET_PLAYER_50AE).
+; RecoilTable: semi-auto has no learned spray; 7 cumulative entries encode a
+; heavy per-shot climb (~1.1-1.6 deg/shot, punchangle.x -= 2 feel) with a
+; slight right-then-left yaw. COMMUNITY CONSENSUS.
+; MaxWallThicknessU 32: consensus (pistol-class wallbang, near engine 30 u).
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+WeaponId = "deagle"
+Damage = 54.0
+SecondaryDamage = 0.0
+HeadshotMult = 4.0
+ArmorPenetration = 0.75
+Rpm = 267
+MagSize = 7
+ReserveAmmo = 35
+SpreadStandDeg = 0.7448
+SpreadMoveDeg = 1.4321
+SpreadAirDeg = 8.5308
+SpreadDuckDeg = 0.6589
+RangeModifier = 0.81
+PenetrationStages = 2
+MaxWallThicknessU = 32.0
+MeleeRangeU = 0.0
+RecoilTable = PackedVector2Array(1.6, 0.05, 3.1, 0.15, 4.5, 0.15, 5.8, 0.05, 7, -0.05, 8.1, -0.1, 9.1, -0.1)

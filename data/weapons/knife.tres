@@ -1,0 +1,43 @@
+; Knife table — Counter-Strike 1.6 reference values (melee: no magazine).
+; Scalars: https://csjs.live/weapons/knife (slash 15/20, stab 65, backstab x3,
+; slash reach 48 u, stab reach 32 u, 250 u/s, no wall penetration).
+; Code constants: https://github.com/s1lentq/ReGameDLL_CS
+; - regamedll/dlls/weapons.h: KNIFE_STAB_DAMAGE 65, KNIFE_SWING_DAMAGE 15,
+;   KNIFE_SWING_DAMAGE_FAST 20, KNIFE_STAB_DISTANCE 32, KNIFE_SWING_DISTANCE
+;   48, KNIFE_BACKSTAB_MULTIPLIER 3 (dot > 0.8 behind target), KNIFE_MAX_SPEED
+;   250.
+; - regamedll/dlls/wpn_shared/wpn_knife.cpp: PrimaryAttack Swing (slash,
+;   0.35-0.4 s cadence), SecondaryAttack Stab (1.0-1.1 s cadence);
+;   m_iClip = WEAPON_NOCLIP (no magazine).
+; - regamedll/dlls/player.cpp TakeDamage: ARMOR_RATIO 0.5 x 1.7
+;   (WEAPON_KNIFE) = 0.85.
+; Conventions: Damage = stab 65, SecondaryDamage = fast slash 20, Rpm = 0
+; (manual cadence, not cyclic), MagSize = 0 with EMPTY RecoilTable (length ==
+; mag holds), ReserveAmmo = -1 (no ammo), RangeModifier = 1.0 (no falloff;
+; reach is gated by MeleeRangeU 48), MaxWallThicknessU = 0 (never penetrates).
+; HeadshotMult = 1.0: no reference documents melee head behavior; engine
+; TraceAttack hitgroups technically apply, but competitive sources never rely
+; on it. COMMUNITY CONSENSUS — revisit if evidence found.
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+WeaponId = "knife"
+Damage = 65.0
+SecondaryDamage = 20.0
+HeadshotMult = 1.0
+ArmorPenetration = 0.85
+Rpm = 0
+MagSize = 0
+ReserveAmmo = -1
+SpreadStandDeg = 0.0
+SpreadMoveDeg = 0.0
+SpreadAirDeg = 0.0
+SpreadDuckDeg = 0.0
+RangeModifier = 1.0
+PenetrationStages = 0
+MaxWallThicknessU = 0.0
+MeleeRangeU = 48.0
+RecoilTable = PackedVector2Array()

@@ -1,0 +1,46 @@
+; AWP table — Counter-Strike 1.6 reference values (SCOPED; unscoped adds spread).
+; Scalars: https://csjs.live/weapons/awp (115 dmg, 97.5% armor, 41 RPM /
+; 1.45 s cycle, 99% per 500 u, 3 penetration stages, 10+30 ammo,
+; 210 u/s, 150 u/s scoped).
+; Code constants: https://github.com/s1lentq/ReGameDLL_CS
+; - regamedll/dlls/weapons.h: AWP_DAMAGE 115, AWP_RANGE_MODIFER 0.99,
+;   AWP_MAX_SPEED 210, AWP_MAX_SPEED_ZOOM 150.
+; - regamedll/dlls/wpn_shared/wpn_awp.cpp PrimaryAttack: air 0.85,
+;   move fast(>140u/s) 0.25, move slow(>10u/s) 0.1, duck 0.0, stand 0.001;
+;   cycle 1.45 s; FireBullets3 penetration 3, BULLET_PLAYER_338MAG.
+;   Spread fields below are scoped, atan(spread) to degrees: stand 0.0573,
+;   duck 0.0, move 14.0362 (run > 140 branch), air 40.3645. Unscoped shots
+;   add +0.08 spread (not encoded; scope state is gameplay-level).
+; - regamedll/dlls/weapontype.h: AWP_MAX_CLIP 10, MAX_AMMO_338MAGNUM 30.
+; - regamedll/dlls/player.cpp TraceAttack: HITGROUP_HEAD damage x4;
+;   TakeDamage: ARMOR_RATIO 0.5 x 1.95 (WEAPON_AWP) = 0.975.
+; - regamedll/dlls/cbase.cpp FireBullets3: falloff pow(rangeMod, dist/500);
+;   wall damage x0.6 (CHAR_TEX_WOOD), penetration skip 45 u/stage
+;   (BULLET_PLAYER_338MAG).
+; RecoilTable: bolt-action has no learned spray; 10 cumulative entries encode
+; a near-vertical kick (~1.1 deg/shot, tiny alternating yaw) matching the
+; punchangle.x -= 2 kick feel, scaled to the table convention. CONSENSUS.
+; MaxWallThicknessU 96: consensus (deepest wallbang, still stops at ~120 u).
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+WeaponId = "awp"
+Damage = 115.0
+SecondaryDamage = 0.0
+HeadshotMult = 4.0
+ArmorPenetration = 0.975
+Rpm = 41
+MagSize = 10
+ReserveAmmo = 30
+SpreadStandDeg = 0.0573
+SpreadMoveDeg = 14.0362
+SpreadAirDeg = 40.3645
+SpreadDuckDeg = 0.0
+RangeModifier = 0.99
+PenetrationStages = 3
+MaxWallThicknessU = 96.0
+MeleeRangeU = 0.0
+RecoilTable = PackedVector2Array(1.1, 0, 2.2, 0.05, 3.3, -0.05, 4.4, 0.05, 5.5, -0.05, 6.6, 0.05, 7.7, -0.05, 8.8, 0.05, 9.9, -0.05, 11, 0)

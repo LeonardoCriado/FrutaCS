@@ -1,0 +1,47 @@
+; M4A1 table — Counter-Strike 1.6 reference values (UNSUPPRESSED default state).
+; Scalars: https://csjs.live/weapons/m4a1 (32 dmg unsuppressed / 33 suppressed,
+; 70% armor, 686 RPM / 0.0875 s cycle, 97% per 500 u (95% suppressed),
+; 2 penetration stages, 30+90 ammo, 230 u/s).
+; Code constants: https://github.com/s1lentq/ReGameDLL_CS
+; - regamedll/dlls/weapons.h: M4A1_DAMAGE 32, M4A1_DAMAGE_SIL 33,
+;   M4A1_RANGE_MODIFER 0.97, M4A1_RANGE_MODIFER_SIL 0.95,
+;   M4A1_MAX_SPEED 230, M4A1_RELOAD_TIME 3.05, M4A1_ACCURACY_DIVISOR 220.
+; - regamedll/dlls/wpn_shared/wpn_m4a1.cpp PrimaryAttack (both modes):
+;   air 0.035+0.4*acc, move(>140u/s) 0.035+0.07*acc, grounded 0.02*acc
+;   (0.025*acc suppressed; no duck branch); cycle 0.0875 s; FireBullets3
+;   penetration 2, BULLET_PLAYER_556MM. First-shot spreads below use fresh
+;   accuracy 0.2, atan(spread) to degrees: stand/duck 0.004 -> 0.2292,
+;   move 0.049 -> 2.8052, air 0.115 -> 6.5602.
+; - regamedll/dlls/weapontype.h: M4A1_MAX_CLIP 30, MAX_AMMO_556NATO 90.
+; - regamedll/dlls/player.cpp TraceAttack: HITGROUP_HEAD damage x4;
+;   TakeDamage: ARMOR_RATIO 0.5 x 1.4 (WEAPON_M4A1) = 0.70.
+; - regamedll/dlls/cbase.cpp FireBullets3: falloff pow(rangeMod, dist/500);
+;   wall damage x0.6 (CHAR_TEX_WOOD), penetration skip 35 u/stage
+;   (BULLET_PLAYER_556MM).
+; RecoilTable: authored for FrutaCS from the community-consensus M4 spray
+; shape (tighter AK: climb 1-7, slight left 8-12, right 13-18, settle 19-30),
+; cumulative pitch-up+/yaw-right+ degrees. COMMUNITY CONSENSUS.
+; MaxWallThicknessU 48: consensus (below AK 64, above Deagle 32).
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+WeaponId = "m4a1"
+Damage = 32.0
+SecondaryDamage = 0.0
+HeadshotMult = 4.0
+ArmorPenetration = 0.7
+Rpm = 686
+MagSize = 30
+ReserveAmmo = 90
+SpreadStandDeg = 0.2292
+SpreadMoveDeg = 2.8052
+SpreadAirDeg = 6.5602
+SpreadDuckDeg = 0.2292
+RangeModifier = 0.97
+PenetrationStages = 2
+MaxWallThicknessU = 48.0
+MeleeRangeU = 0.0
+RecoilTable = PackedVector2Array(0.45, 0.02, 0.95, 0.05, 1.45, 0.02, 1.95, -0.05, 2.45, -0.15, 2.95, -0.3, 3.4, -0.5, 3.8, -0.7, 4.15, -0.85, 4.45, -0.9, 4.7, -0.8, 4.9, -0.6, 5.05, -0.3, 5.15, 0.05, 5.25, 0.4, 5.35, 0.7, 5.45, 0.9, 5.55, 1, 5.65, 0.95, 5.75, 0.85, 5.85, 0.8, 5.9, 0.85, 5.95, 0.95, 6, 1, 6.05, 0.95, 6.1, 0.85, 6.1, 0.8, 6.1, 0.85, 6.15, 0.9, 6.2, 0.9)

@@ -1,0 +1,48 @@
+; AK-47 table — Counter-Strike 1.6 reference values.
+; Scalars: https://csjs.live/weapons/ak-47 (36 dmg, 77.5% armor, 628 RPM /
+; 0.0955 s cycle, 98% per 500 u, 2 penetration stages, 30+90 ammo, 221 u/s),
+; cross-checked with https://counterstrike.fandom.com/wiki/AK-47 (35->36 dmg note).
+; Code constants: https://github.com/s1lentq/ReGameDLL_CS
+; - regamedll/dlls/weapons.h: AK47_DAMAGE 36, AK47_RANGE_MODIFER 0.98,
+;   AK47_MAX_SPEED 221, AK47_RELOAD_TIME 2.45, AK47_ACCURACY_DIVISOR 200.
+; - regamedll/dlls/wpn_shared/wpn_ak47.cpp PrimaryAttack: air 0.04+0.4*acc,
+;   move(>140u/s) 0.04+0.07*acc, grounded 0.0275*acc (no duck branch);
+;   cycle 0.0955 s; FireBullets3 penetration 2, BULLET_PLAYER_762MM.
+;   First-shot spreads below use fresh accuracy 0.2, converted to degrees
+;   via atan(spread): stand/duck 0.0055 -> 0.3151, move 0.054 -> 3.091,
+;   air 0.12 -> 6.8428.
+; - regamedll/dlls/weapontype.h: AK47_MAX_CLIP 30, MAX_AMMO_762NATO 90.
+; - regamedll/dlls/player.cpp TraceAttack: HITGROUP_HEAD damage x4;
+;   TakeDamage: ARMOR_RATIO 0.5 x 1.55 (WEAPON_AK47) = 0.775.
+; - regamedll/dlls/cbase.cpp FireBullets3: falloff pow(rangeMod, dist/500);
+;   wall damage x0.6 (CHAR_TEX_WOOD flDamageModifier), penetration skip
+;   39 u/stage (BULLET_PLAYER_762MM).
+; RecoilTable: 1.6 has NO deterministic table (punchangle + KickBack). This
+; 30-entry cumulative (pitch-up+, yaw-right+) table is authored for FrutaCS
+; from the documented community-consensus AK spray shape: climb up 1-6,
+; swing left 7-10, long swing right 11-19, settle 20-30. COMMUNITY CONSENSUS.
+; MaxWallThicknessU 64: consensus simplification (thin ~40 u cover falls to
+; rifles, structural ~120 u walls stop everything); engine order preserved.
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+WeaponId = "ak47"
+Damage = 36.0
+SecondaryDamage = 0.0
+HeadshotMult = 4.0
+ArmorPenetration = 0.775
+Rpm = 628
+MagSize = 30
+ReserveAmmo = 90
+SpreadStandDeg = 0.3151
+SpreadMoveDeg = 3.091
+SpreadAirDeg = 6.8428
+SpreadDuckDeg = 0.3151
+RangeModifier = 0.98
+PenetrationStages = 2
+MaxWallThicknessU = 64.0
+MeleeRangeU = 0.0
+RecoilTable = PackedVector2Array(0.55, 0, 1.15, 0.05, 1.8, 0.05, 2.5, -0.05, 3.25, -0.2, 4, -0.45, 4.7, -0.85, 5.35, -1.3, 5.95, -1.7, 6.5, -1.95, 7, -1.8, 7.45, -1.4, 7.85, -0.85, 8.2, -0.2, 8.5, 0.45, 8.75, 1.05, 8.95, 1.5, 9.1, 1.75, 9.2, 1.8, 9.25, 1.65, 9.25, 1.4, 9.2, 1.1, 9.1, 0.9, 9, 0.85, 8.95, 0.95, 8.95, 1.1, 9, 1.2, 9.1, 1.15, 9.2, 1, 9.3, 0.85)
