@@ -357,6 +357,13 @@ public partial class Bot : CharacterBody3D
             int tier = (int)pickup.GetMeta("tier", -1);
             if (tier < 0)
                 continue;
+            // Upgrade-only scan: a nearer same-or-worse-tier gun must not
+            // mask a farther better-tier gun (the brain only accepts
+            // upgrades, so tracking the nearest non-upgrade would pin the
+            // bot on a gun it will never take while a real upgrade sits
+            // just behind it). Nearest upgrade wins.
+            if (tier <= _currentTier)
+                continue;
             // Same-level only: deck guns read through the basin floor from
             // above (and vice versa). Deck is y=0, basin floor y=-96; 72u
             // splits them while ramp midpoints still see both sides.

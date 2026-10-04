@@ -9,9 +9,9 @@
     <GodotProjectDir>$(MSBuildThisFileDirectory)</GodotProjectDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(UsingGodotNETSdk)' == 'true'">
-    <BaseOutputPath>$(GodotProjectDir).godot\mono\temp\bin\</BaseOutputPath>
-    <OutputPath>$(GodotProjectDir).godot\mono\temp\bin\$(Configuration)\</OutputPath>
-    <BaseIntermediateOutputPath>$(GodotProjectDir).godot\mono\temp\obj\</BaseIntermediateOutputPath>
-    <IntermediateOutputPath>$(GodotProjectDir).godot\mono\temp\obj\$(Configuration)\</IntermediateOutputPath>
+    <BaseOutputPath>$(GodotProjectDir).godot/mono/temp/bin/</BaseOutputPath>
+    <OutputPath>$(GodotProjectDir).godot/mono/temp/bin/$(Configuration)/</OutputPath>
+    <BaseIntermediateOutputPath>$(GodotProjectDir).godot/mono/temp/obj/</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>$(GodotProjectDir).godot/mono/temp/obj/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>
 </Project>

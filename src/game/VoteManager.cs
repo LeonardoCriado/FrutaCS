@@ -60,7 +60,7 @@ public sealed class VoteManager
     /// </summary>
     public bool CastVote(string voterId, string option)
     {
-        if (!IsOpen || voterId == null || !_counts.ContainsKey(option))
+        if (!IsOpen || string.IsNullOrEmpty(voterId) || option == null || !_counts.ContainsKey(option))
             return false;
         if (_ballots.TryGetValue(voterId, out string? previous))
         {

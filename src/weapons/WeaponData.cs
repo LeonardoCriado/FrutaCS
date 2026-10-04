@@ -114,7 +114,7 @@ public partial class WeaponData : Resource
     /// </summary>
     public static WeaponData Get(string weaponId)
     {
-        if (weaponId == null)
+        if (string.IsNullOrEmpty(weaponId))
             return null;
         if (_cache.TryGetValue(weaponId, out WeaponData cached) && IsInstanceValid(cached))
             return cached;
