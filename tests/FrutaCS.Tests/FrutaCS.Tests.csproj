@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Pass GodotProjectDir (set in Directory.Build.props) to source
+         generators; without this, Godot's ScriptPathAttributeGenerator
+         (transitive via gdunit4.test.adapter) fails with CS8785. -->
+    <CompilerVisibleProperty Include="GodotProjectDir" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Direct reference (not just transitive via the adapter) is required:
+         Test.Sdk ships its MSBuild targets under build/ (not buildTransitive),
+         so only a direct reference imports the VSTest target that makes
+         `dotnet test` actually execute tests. Version matches the adapter's
+         own dependency floor (gdunit4.test.adapter 3.0.0 → 17.14.1). -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="gdUnit4.api" Version="5.0.0" />
+    <PackageReference Include="gdunit4.test.adapter" Version="3.0.0" />
+    <ProjectReference Include="../../src/FrutaCS.csproj" />
+  </ItemGroup>
+</Project>

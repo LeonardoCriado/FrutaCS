@@ -1,0 +1,233 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/Hud.cs" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="Panel"]
+bg_color = Color(0.08, 0.06, 0.04, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+
+[node name="Hud" type="CanvasLayer"]
+script = ExtResource("1")
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 8.0
+offset_bottom = 48.0
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 30
+text = "Ronda 1 · CT 0 : 0 T"
+
+[node name="RoundTimerLabel" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+theme_override_font_sizes/font_size = 30
+text = "2:00"
+
+[node name="MatchClockLabel" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 20
+text = "Partido 10:00"
+
+[node name="FlavorLabel" type="Label" parent="."]
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 300.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+theme_override_font_sizes/font_size = 16
+text = "FRUTACS · hito 1"
+
+[node name="BottomLeft" type="VBoxContainer" parent="."]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -104.0
+offset_right = 320.0
+offset_bottom = -16.0
+theme_override_constants/separation = 4
+
+[node name="HealthLabel" type="Label" parent="BottomLeft"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 26
+text = "VIDA  --"
+
+[node name="ArmorLabel" type="Label" parent="BottomLeft"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 20
+text = "CHALECO  --"
+
+[node name="BottomRight" type="VBoxContainer" parent="."]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -336.0
+offset_top = -104.0
+offset_right = -16.0
+offset_bottom = -16.0
+theme_override_constants/separation = 4
+
+[node name="WeaponLabel" type="Label" parent="BottomRight"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 2
+text = "ARMA  --"
+
+[node name="AmmoLabel" type="Label" parent="BottomRight"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 2
+text = "MUNI  --"
+
+[node name="CenterMsg" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+anchor_left = 0.5
+anchor_top = 0.32
+anchor_right = 0.5
+anchor_bottom = 0.32
+offset_left = -400.0
+offset_top = -30.0
+offset_right = 400.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+theme_override_font_sizes/font_size = 40
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="DeadMsg" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+anchor_left = 0.5
+anchor_top = 0.55
+anchor_right = 0.5
+anchor_bottom = 0.55
+offset_left = -400.0
+offset_top = -20.0
+offset_right = 400.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(1, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Scoreboard" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -250.0
+offset_right = 320.0
+offset_bottom = 250.0
+theme_override_styles/panel = SubResource("Panel")
+
+[node name="ScoreVBox" type="VBoxContainer" parent="Scoreboard"]
+theme_override_constants/separation = 6
+
+[node name="ScoreTitle" type="Label" parent="Scoreboard/ScoreVBox"]
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+theme_override_font_sizes/font_size = 22
+text = "TABLA FRUTERA · TAB para cerrar"
+horizontal_alignment = 1
+
+[node name="ScoreHead" type="HBoxContainer" parent="Scoreboard/ScoreVBox"]
+theme_override_constants/separation = 12
+
+[node name="HName" type="Label" parent="Scoreboard/ScoreVBox/ScoreHead"]
+theme_override_font_sizes/font_size = 16
+text = "NOMBRE"
+size_flags_horizontal = 3
+
+[node name="HFrags" type="Label" parent="Scoreboard/ScoreVBox/ScoreHead"]
+custom_minimum_size = Vector2(40, 0)
+theme_override_font_sizes/font_size = 16
+text = "F"
+
+[node name="HDeaths" type="Label" parent="Scoreboard/ScoreVBox/ScoreHead"]
+custom_minimum_size = Vector2(40, 0)
+theme_override_font_sizes/font_size = 16
+text = "M"
+
+[node name="HPing" type="Label" parent="Scoreboard/ScoreVBox/ScoreHead"]
+custom_minimum_size = Vector2(60, 0)
+theme_override_font_sizes/font_size = 16
+text = "PING"
+
+[node name="CtHeader" type="Label" parent="Scoreboard/ScoreVBox"]
+theme_override_colors/font_color = Color(0.35, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "CT"
+
+[node name="CtRows" type="VBoxContainer" parent="Scoreboard/ScoreVBox"]
+unique_name_in_owner = true
+theme_override_constants/separation = 2
+
+[node name="THeader" type="Label" parent="Scoreboard/ScoreVBox"]
+theme_override_colors/font_color = Color(1, 0.45, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+text = "T"
+
+[node name="TRows" type="VBoxContainer" parent="Scoreboard/ScoreVBox"]
+unique_name_in_owner = true
+theme_override_constants/separation = 2
+
+[node name="VotePanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -380.0
+offset_right = 300.0
+offset_bottom = -120.0
+theme_override_styles/panel = SubResource("Panel")
+
+[node name="VoteVBox" type="VBoxContainer" parent="VotePanel"]
+theme_override_constants/separation = 8
+
+[node name="VoteTitle" type="Label" parent="VotePanel/VoteVBox"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.6, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 22
+text = "Fin del partido · ¿revancha en la pileta?"
+horizontal_alignment = 1
+
+[node name="VoteOptions" type="VBoxContainer" parent="VotePanel/VoteVBox"]
+unique_name_in_owner = true
+theme_override_constants/separation = 6
+
+[node name="VoteTimer" type="Label" parent="VotePanel/VoteVBox"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 16
+text = "Cierra en 0:30"
+horizontal_alignment = 1
+
+[node name="VoteResult" type="Label" parent="VotePanel/VoteVBox"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(1, 0.75, 0.3, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="VoteHint" type="Label" parent="VotePanel/VoteVBox"]
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "Teclas 1-9 o clic para votar · TAB abre la tabla"
+horizontal_alignment = 1

@@ -1,0 +1,493 @@
+[gd_scene load_steps=42 format=3]
+
+[ext_resource type="Script" path="res://src/game/MatchManager.cs" id="1"]
+[ext_resource type="PackedScene" path="res://src/player/PlayerBody.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://src/bots/Bot.tscn" id="3"]
+[ext_resource type="Script" path="res://src/maps/MapConfig.cs" id="4"]
+[ext_resource type="Script" path="res://src/maps/WeaponPickup.cs" id="5"]
+[ext_resource type="Resource" path="res://src/maps/fy_pileta_nav.tres" id="6"]
+[ext_resource type="PackedScene" path="res://src/ui/Hud.tscn" id="7"]
+
+[sub_resource type="Environment" id="Env_1"]
+background_mode = 1
+background_color = Color(0.55, 0.78, 0.95, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.85, 0.88, 0.92, 1)
+ambient_light_energy = 1.0
+
+[sub_resource type="StandardMaterial3D" id="DeckMat"]
+albedo_color = Color(0.78, 0.8, 0.83, 1)
+
+[sub_resource type="StandardMaterial3D" id="PoolMat"]
+albedo_color = Color(0.25, 0.55, 0.85, 1)
+
+[sub_resource type="StandardMaterial3D" id="CoverMat"]
+albedo_color = Color(0.9, 0.55, 0.25, 1)
+
+[sub_resource type="StandardMaterial3D" id="WallMat"]
+albedo_color = Color(0.93, 0.93, 0.9, 1)
+
+[sub_resource type="BoxMesh" id="DeckNSM"]
+size = Vector3(2000, 10, 840)
+
+[sub_resource type="BoxMesh" id="DeckWEM"]
+size = Vector3(680, 10, 320)
+
+[sub_resource type="BoxMesh" id="BasinFloorM"]
+size = Vector3(412, 10, 92)
+
+[sub_resource type="BoxMesh" id="RampEWM"]
+size = Vector3(170, 16, 320)
+
+[sub_resource type="BoxMesh" id="RampNSM"]
+size = Vector3(640, 16, 170)
+
+[sub_resource type="BoxMesh" id="SkirtEWM"]
+size = Vector3(16, 100, 336)
+
+[sub_resource type="BoxMesh" id="SkirtNSM"]
+size = Vector3(656, 100, 16)
+
+[sub_resource type="BoxMesh" id="BridgeM"]
+size = Vector3(160, 16, 480)
+
+[sub_resource type="BoxMesh" id="IslandM"]
+size = Vector3(240, 96, 200)
+
+[sub_resource type="BoxMesh" id="CoverBigM"]
+size = Vector3(128, 40, 128)
+
+[sub_resource type="BoxMesh" id="CoverMidM"]
+size = Vector3(80, 40, 80)
+
+[sub_resource type="BoxMesh" id="WallNSM"]
+size = Vector3(2064, 256, 32)
+
+[sub_resource type="BoxMesh" id="WallEWM"]
+size = Vector3(32, 256, 2064)
+
+[sub_resource type="BoxMesh" id="PickupBoxM"]
+size = Vector3(40, 20, 60)
+
+[sub_resource type="BoxShape3D" id="DeckNSS"]
+size = Vector3(2000, 10, 840)
+
+[sub_resource type="BoxShape3D" id="DeckWES"]
+size = Vector3(680, 10, 320)
+
+[sub_resource type="BoxShape3D" id="BasinFloorS"]
+size = Vector3(412, 10, 92)
+
+[sub_resource type="BoxShape3D" id="RampEWS"]
+size = Vector3(170, 16, 320)
+
+[sub_resource type="BoxShape3D" id="RampNSS"]
+size = Vector3(640, 16, 170)
+
+[sub_resource type="BoxShape3D" id="SkirtEWS"]
+size = Vector3(16, 100, 336)
+
+[sub_resource type="BoxShape3D" id="SkirtNSS"]
+size = Vector3(656, 100, 16)
+
+[sub_resource type="BoxShape3D" id="BridgeS"]
+size = Vector3(160, 16, 480)
+
+[sub_resource type="BoxShape3D" id="IslandS"]
+size = Vector3(240, 96, 200)
+
+[sub_resource type="BoxShape3D" id="CoverBigS"]
+size = Vector3(128, 40, 128)
+
+[sub_resource type="BoxShape3D" id="CoverMidS"]
+size = Vector3(80, 40, 80)
+
+[sub_resource type="BoxShape3D" id="WallNSS"]
+size = Vector3(2064, 256, 32)
+
+[sub_resource type="BoxShape3D" id="WallEWS"]
+size = Vector3(32, 256, 2064)
+
+[sub_resource type="SphereShape3D" id="PickupShape"]
+radius = 48.0
+
+[sub_resource type="Resource" id="MapCfg"]
+script = ExtResource("4")
+
+[node name="FyPileta" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_1")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 200, 0)
+light_energy = 1.1
+
+[node name="DeckN" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5, 580)
+
+[node name="Mesh" type="MeshInstance3D" parent="DeckN"]
+mesh = SubResource("DeckNSM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="DeckN"]
+shape = SubResource("DeckNSS")
+
+[node name="DeckS" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5, -580)
+
+[node name="Mesh" type="MeshInstance3D" parent="DeckS"]
+mesh = SubResource("DeckNSM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="DeckS"]
+shape = SubResource("DeckNSS")
+
+[node name="DeckW" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -660, -5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="DeckW"]
+mesh = SubResource("DeckWEM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="DeckW"]
+shape = SubResource("DeckWES")
+
+[node name="DeckE" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 660, -5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="DeckE"]
+mesh = SubResource("DeckWEM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="DeckE"]
+shape = SubResource("DeckWES")
+
+[node name="BasinFloor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -101, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="BasinFloor"]
+mesh = SubResource("BasinFloorM")
+surface_material_override/0 = SubResource("PoolMat")
+
+[node name="Collision" type="CollisionShape3D" parent="BasinFloor"]
+shape = SubResource("BasinFloorS")
+
+[node name="RampE" type="StaticBody3D" parent="."]
+transform = Transform3D(0.7635, -0.6428, 0, 0.6428, 0.7635, 0, 0, 0, 1, 260.5, -60.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="RampE"]
+mesh = SubResource("RampEWM")
+surface_material_override/0 = SubResource("PoolMat")
+
+[node name="Collision" type="CollisionShape3D" parent="RampE"]
+shape = SubResource("RampEWS")
+
+[node name="RampW" type="StaticBody3D" parent="."]
+transform = Transform3D(-0.7635, -0.6428, 0, 0.6428, -0.7635, 0, 0, 0, 1, -260.5, -60.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="RampW"]
+mesh = SubResource("RampEWM")
+surface_material_override/0 = SubResource("PoolMat")
+
+[node name="Collision" type="CollisionShape3D" parent="RampW"]
+shape = SubResource("RampEWS")
+
+[node name="RampS" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.7635, 0.6428, 0, -0.6428, -0.7635, 0, -60.5, -100.5)
+
+[node name="Mesh" type="MeshInstance3D" parent="RampS"]
+mesh = SubResource("RampNSM")
+surface_material_override/0 = SubResource("PoolMat")
+
+[node name="Collision" type="CollisionShape3D" parent="RampS"]
+shape = SubResource("RampNSS")
+
+[node name="RampN" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.7635, -0.6428, 0, 0.6428, -0.7635, 0, -60.5, 100.5)
+
+[node name="Mesh" type="MeshInstance3D" parent="RampN"]
+mesh = SubResource("RampNSM")
+surface_material_override/0 = SubResource("PoolMat")
+
+[node name="Collision" type="CollisionShape3D" parent="RampN"]
+shape = SubResource("RampNSS")
+
+[node name="SkirtE" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 328, -50, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="SkirtE"]
+mesh = SubResource("SkirtEWM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="SkirtE"]
+shape = SubResource("SkirtEWS")
+
+[node name="SkirtW" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -328, -50, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="SkirtW"]
+mesh = SubResource("SkirtEWM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="SkirtW"]
+shape = SubResource("SkirtEWS")
+
+[node name="SkirtN" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -50, 168)
+
+[node name="Mesh" type="MeshInstance3D" parent="SkirtN"]
+mesh = SubResource("SkirtNSM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="SkirtN"]
+shape = SubResource("SkirtNSS")
+
+[node name="SkirtS" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -50, -168)
+
+[node name="Mesh" type="MeshInstance3D" parent="SkirtS"]
+mesh = SubResource("SkirtNSM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="SkirtS"]
+shape = SubResource("SkirtNSS")
+
+[node name="Bridge" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -8, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Bridge"]
+mesh = SubResource("BridgeM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Bridge"]
+shape = SubResource("BridgeS")
+
+[node name="Island" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -48, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Island"]
+mesh = SubResource("IslandM")
+surface_material_override/0 = SubResource("DeckMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Island"]
+shape = SubResource("IslandS")
+
+[node name="Cover0" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cover0"]
+mesh = SubResource("CoverMidM")
+surface_material_override/0 = SubResource("CoverMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Cover0"]
+shape = SubResource("CoverMidS")
+
+[node name="Cover1" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 400, 20, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cover1"]
+mesh = SubResource("CoverBigM")
+surface_material_override/0 = SubResource("CoverMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Cover1"]
+shape = SubResource("CoverBigS")
+
+[node name="Cover2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -400, 20, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cover2"]
+mesh = SubResource("CoverBigM")
+surface_material_override/0 = SubResource("CoverMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Cover2"]
+shape = SubResource("CoverBigS")
+
+[node name="Cover3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 20, 260)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cover3"]
+mesh = SubResource("CoverBigM")
+surface_material_override/0 = SubResource("CoverMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Cover3"]
+shape = SubResource("CoverBigS")
+
+[node name="Cover4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560, 20, -260)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cover4"]
+mesh = SubResource("CoverBigM")
+surface_material_override/0 = SubResource("CoverMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Cover4"]
+shape = SubResource("CoverBigS")
+
+[node name="Cover5" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 20, -260)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cover5"]
+mesh = SubResource("CoverBigM")
+surface_material_override/0 = SubResource("CoverMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Cover5"]
+shape = SubResource("CoverBigS")
+
+[node name="Cover6" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560, 20, 260)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cover6"]
+mesh = SubResource("CoverBigM")
+surface_material_override/0 = SubResource("CoverMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Cover6"]
+shape = SubResource("CoverBigS")
+
+[node name="WallN" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 128, 1016)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallN"]
+mesh = SubResource("WallNSM")
+surface_material_override/0 = SubResource("WallMat")
+
+[node name="Collision" type="CollisionShape3D" parent="WallN"]
+shape = SubResource("WallNSS")
+
+[node name="WallS" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 128, -1016)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallS"]
+mesh = SubResource("WallNSM")
+surface_material_override/0 = SubResource("WallMat")
+
+[node name="Collision" type="CollisionShape3D" parent="WallS"]
+shape = SubResource("WallNSS")
+
+[node name="WallE" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1016, 128, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallE"]
+mesh = SubResource("WallEWM")
+surface_material_override/0 = SubResource("WallMat")
+
+[node name="Collision" type="CollisionShape3D" parent="WallE"]
+shape = SubResource("WallEWS")
+
+[node name="WallW" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1016, 128, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallW"]
+mesh = SubResource("WallEWM")
+surface_material_override/0 = SubResource("WallMat")
+
+[node name="Collision" type="CollisionShape3D" parent="WallW"]
+shape = SubResource("WallEWS")
+
+[node name="CTSpawn0" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -380, 2, -668)
+
+[node name="CTSpawn1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -253.3, 2, -485.8)
+
+[node name="CTSpawn2" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -126.7, 2, -376.4)
+
+[node name="CTSpawn3" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -340)
+
+[node name="CTSpawn4" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 126.7, 2, -376.4)
+
+[node name="CTSpawn5" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 253.3, 2, -485.8)
+
+[node name="CTSpawn6" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 380, 2, -668)
+
+[node name="TSpawn0" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 380, 2, 668)
+
+[node name="TSpawn1" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 253.3, 2, 485.8)
+
+[node name="TSpawn2" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 126.7, 2, 376.4)
+
+[node name="TSpawn3" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 340)
+
+[node name="TSpawn4" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -126.7, 2, 376.4)
+
+[node name="TSpawn5" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -253.3, 2, 485.8)
+
+[node name="TSpawn6" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -380, 2, 668)
+
+[node name="PickupAK1" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -160)
+script = ExtResource("5")
+WeaponId = "ak47"
+
+[node name="Mesh" type="MeshInstance3D" parent="PickupAK1"]
+mesh = SubResource("PickupBoxM")
+
+[node name="Shape" type="CollisionShape3D" parent="PickupAK1"]
+shape = SubResource("PickupShape")
+
+[node name="PickupAK2" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 160)
+script = ExtResource("5")
+WeaponId = "ak47"
+
+[node name="Mesh" type="MeshInstance3D" parent="PickupAK2"]
+mesh = SubResource("PickupBoxM")
+
+[node name="Shape" type="CollisionShape3D" parent="PickupAK2"]
+shape = SubResource("PickupShape")
+
+[node name="PickupM4E" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 4, -400)
+script = ExtResource("5")
+WeaponId = "m4a1"
+
+[node name="Mesh" type="MeshInstance3D" parent="PickupM4E"]
+mesh = SubResource("PickupBoxM")
+
+[node name="Shape" type="CollisionShape3D" parent="PickupM4E"]
+shape = SubResource("PickupShape")
+
+[node name="PickupM4W" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560, 4, 400)
+script = ExtResource("5")
+WeaponId = "m4a1"
+
+[node name="Mesh" type="MeshInstance3D" parent="PickupM4W"]
+mesh = SubResource("PickupBoxM")
+
+[node name="Shape" type="CollisionShape3D" parent="PickupM4W"]
+shape = SubResource("PickupShape")
+
+[node name="PickupAWP" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 170, -92, 0)
+script = ExtResource("5")
+WeaponId = "awp"
+
+[node name="Mesh" type="MeshInstance3D" parent="PickupAWP"]
+mesh = SubResource("PickupBoxM")
+
+[node name="Shape" type="CollisionShape3D" parent="PickupAWP"]
+shape = SubResource("PickupShape")
+
+[node name="NavRegion" type="NavigationRegion3D" parent="."]
+navigation_mesh = ExtResource("6")
+
+[node name="Match" type="Node" parent="."]
+script = ExtResource("1")
+PlayersPerTeam = 7
+Map = SubResource("MapCfg")
+PlayerScene = ExtResource("2")
+BotScene = ExtResource("3")
+
+[node name="Hud" parent="." instance=ExtResource("7")]

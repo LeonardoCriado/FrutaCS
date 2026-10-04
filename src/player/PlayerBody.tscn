@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/player/PlayerBody.cs" id="1"]
+[ext_resource type="PackedScene" path="res://src/weapons/WeaponView.tscn" id="2"]
+[ext_resource type="Resource" path="res://data/weapons/ak47.tres" id="3"]
+
+[sub_resource type="CapsuleShape3D" id="1"]
+radius = 16.0
+height = 72.0
+
+[node name="PlayerBody" type="CharacterBody3D"]
+script = ExtResource("1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 36, 0)
+shape = SubResource("1")
+
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 64, 0)
+
+[node name="Camera3D" type="Camera3D" parent="Head"]
+current = true
+fov = 90.0
+
+[node name="WeaponView" parent="Head/Camera3D" instance=ExtResource("2")]
+Weapon = ExtResource("3")
