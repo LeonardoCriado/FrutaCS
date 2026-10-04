@@ -89,7 +89,7 @@ public partial class WeaponPickup : Area3D
         // below the deck and must not be claimable through the floor.
         if (body.GlobalPosition.DistanceTo(GlobalPosition) > ClaimRadiusU)
             return; // Stale entered (see ClaimRadiusU): never bill it.
-        WeaponData data = GD.Load<WeaponData>($"res://data/weapons/{WeaponId}.tres");
+        WeaponData data = WeaponData.Get(WeaponId);
         if (data == null)
             return;
         if (Grab() == "")

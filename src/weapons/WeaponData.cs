@@ -85,4 +85,42 @@ public partial class WeaponData : Resource
         MeleeRangeU,
         (Vector2[])RecoilTable.Clone()
     );
+
+    /// <summary>
+    /// Milestone-1 weapon ids (kept next to the data they address).
+    /// </summary>
+    public static readonly string[] AllIds = new[] { "ak47", "m4a1", "awp", "deagle", "knife" };
+
+    private static readonly System.Collections.Generic.Dictionary<string, WeaponData> _cache = new();
+
+    /// <summary>
+    /// Warm the cache on the main thread (call from scene setup, never
+    /// from a physics callback): the first <see cref="GD.Load{T}"/> of a
+    /// scripted resource sets up its C# peer, which must not race the
+    /// physics tick (Task 10: headless finalizer abort traced to a
+    /// mid-physics first-load in <c>Bot.SwapTo</c>).
+    /// </summary>
+    public static void PreloadAll()
+    {
+        foreach (string id in AllIds)
+            Get(id);
+    }
+
+    /// <summary>
+    /// Cached weapon lookup for hot paths (bot grabs, round resets,
+    /// pickup callbacks). Same data as <see cref="GD.Load{T}"/> every
+    /// time (tables are read-only); zero bridge churn after warmup.
+    /// Returns null for unknown ids, like a failed load.
+    /// </summary>
+    public static WeaponData Get(string weaponId)
+    {
+        if (weaponId == null)
+            return null;
+        if (_cache.TryGetValue(weaponId, out WeaponData cached) && IsInstanceValid(cached))
+            return cached;
+        WeaponData data = GD.Load<WeaponData>($"res://data/weapons/{weaponId}.tres");
+        if (data != null)
+            _cache[weaponId] = data;
+        return data;
+    }
 }

@@ -65,6 +65,9 @@ public partial class MatchManager : Node
     {
         AddToGroup("match_manager");
         Map ??= new MapConfig();
+        // Main-thread weapon warmup BEFORE any physics tick can grab:
+        // first-load peer setup must not race the physics callbacks.
+        FrutaCS.Weapons.WeaponData.PreloadAll();
         _roster = new Node3D { Name = "Fighters" };
         AddChild(_roster);
         // Subscribe BEFORE StartMatch: BeginRound fires RoundStarted
@@ -120,7 +123,7 @@ public partial class MatchManager : Node
             GD.PrintErr("[MatchManager] PlayerScene/BotScene not wired; spawning skipped.");
             return;
         }
-        var sidearm = GD.Load<FrutaCS.Weapons.WeaponData>("res://data/weapons/deagle.tres");
+        var sidearm = FrutaCS.Weapons.WeaponData.Get("deagle");
         var player = PlayerScene.Instantiate<PlayerBody>();
         player.Name = "Vos";
         player.Team = 0;
@@ -166,7 +169,7 @@ public partial class MatchManager : Node
     /// </summary>
     public void ResetRound()
     {
-        var sidearm = GD.Load<FrutaCS.Weapons.WeaponData>("res://data/weapons/deagle.tres");
+        var sidearm = FrutaCS.Weapons.WeaponData.Get("deagle");
         foreach (Node3D fighter in _fighters)
         {
             Vector3 spawn = _spawns[fighter];

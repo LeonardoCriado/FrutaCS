@@ -45,6 +45,17 @@ public partial class Bot : CharacterBody3D
     private const float KnifeIntervalSec = 0.4f;
     private const float UnstickStillSec = 2.5f;
     private const float UnstickDetourSec = 2f;
+    /// <summary>
+    /// World-scan rate (enemy visibility + pickup lists). The scans
+    /// allocate bridge objects per call (group Arrays, raycast
+    /// Dictionaries) that the .NET finalizer must reap off-thread;
+    /// 10 Hz keeps that pressure ~6x below per-tick scanning while
+    /// staying far under reaction times (0.3-0.5 s). Steering, fire
+    /// cadence and timers still run every physics tick on the cached
+    /// results (Task 10 acceptance mitigation for the headless
+    /// finalizer abort).
+    /// </summary>
+    private const float ScanIntervalSec = 0.1f;
 
     [Export] public int Team;
     [Export] public MovementConfig Config;
@@ -96,6 +107,7 @@ public partial class Bot : CharacterBody3D
     private readonly PhysicsRayQueryParameters3D _query = PhysicsRayQueryParameters3D.Create(Vector3.Zero, Vector3.Zero);
     private Vector3 _unstickPoint = Vector3.Zero;
     private float _unstickSec;
+    private float _scanClock = ScanIntervalSec;
     private bool _nearbyTaken = true;
     private Node3D _nearbyNode;
     private Vector3 _nearbyPos = Vector3.Zero;
@@ -138,6 +150,7 @@ public partial class Bot : CharacterBody3D
         _reloading = false;
         _stillSec = 0f;
         _unstickSec = 0f;
+        _scanClock = ScanIntervalSec; // Rescan immediately: no stale target across rounds.
         var shape = GetNodeOrNull<CollisionShape3D>("CollisionShape3D");
         if (shape != null)
             shape.SetDeferred("disabled", false);
@@ -249,8 +262,13 @@ public partial class Bot : CharacterBody3D
             return;
         float dt = (float)delta;
         TickTimers(dt);
-        ScanEnemies();
-        ScanPickups();
+        _scanClock += dt;
+        if (_scanClock >= ScanIntervalSec)
+        {
+            _scanClock = 0f;
+            ScanEnemies();
+            ScanPickups();
+        }
         BotPerception perception = new(
             GlobalPosition, Facing(),
             _targetVisible, _targetPos,
@@ -512,7 +530,7 @@ public partial class Bot : CharacterBody3D
     /// </summary>
     private void SwapTo(string weaponId)
     {
-        WeaponData data = GD.Load<WeaponData>($"res://data/weapons/{weaponId}.tres");
+        WeaponData data = WeaponData.Get(weaponId);
         if (data == null)
             return;
         SetLoadout(data.ToStats(), weaponId);
