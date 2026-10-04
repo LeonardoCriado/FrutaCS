@@ -46,6 +46,7 @@ public partial class Hud : CanvasLayer
     private Label _voteResult;
 
     private readonly Dictionary<string, Label> _voteCounts = new();
+    private int _boardSig = -1;
     private int _lastScoreCT;
     private int _lastScoreT;
     private float _msgLeft;
@@ -109,16 +110,19 @@ public partial class Hud : CanvasLayer
             VoteKey(key.PhysicalKeycode);
     }
 
-    /// <summary>Show/hide the TAB scoreboard (rebuilds rows when shown).</summary>
+    /// <summary>Show/hide the TAB scoreboard (rows rebuild on next frame when shown).</summary>
     public void ToggleScoreboard()
     {
         if (_board == null || _match == null)
             return;
         if (_board.Visible)
+        {
             _board.Hide();
+            _boardSig = -1;
+        }
         else
         {
-            RebuildScoreboard();
+            _boardSig = -1;
             _board.Show();
         }
     }
@@ -143,8 +147,7 @@ public partial class Hud : CanvasLayer
         UpdateBottom();
         UpdateScoreEvents();
         UpdateMsg(dt);
-        if (_board.Visible)
-            RebuildScoreboard();
+        UpdateScoreboard();
         UpdateVote();
         UpdateReload(dt);
     }
@@ -233,6 +236,40 @@ public partial class Hud : CanvasLayer
         ClearRows(_tRows);
         foreach (Node3D fighter in _match.Fighters)
             AddRow(FighterTeam(fighter) == 0 ? _ctRows : _tRows, fighter);
+    }
+
+    /// <summary>
+    /// Change-gated scoreboard refresh: rebuilding ~70 Controls every
+    /// frame while visible churns nodes and risks flicker on weak GPUs,
+    /// so rows only rebuild when the underlying data moves. The
+    /// signature covers everything rows render — roster size, frags and
+    /// deaths per fighter (the dead `(afuera)` tag always coincides with
+    /// a death-count change; names never change mid-match). Bindings stay
+    /// live: any real change rebuilds on the very next frame.
+    /// </summary>
+    private void UpdateScoreboard()
+    {
+        if (!_board.Visible)
+        {
+            _boardSig = -1;
+            return;
+        }
+        int sig = BoardSignature();
+        if (sig == _boardSig)
+            return;
+        _boardSig = sig;
+        RebuildScoreboard();
+    }
+
+    private int BoardSignature()
+    {
+        unchecked
+        {
+            int sig = _match.Fighters.Count * 73856093;
+            foreach (Node3D fighter in _match.Fighters)
+                sig = sig * 31 + _match.FragsOf(fighter) * 101 + _match.DeathsOf(fighter);
+            return sig;
+        }
     }
 
     private void AddRow(VBoxContainer box, Node3D fighter)
