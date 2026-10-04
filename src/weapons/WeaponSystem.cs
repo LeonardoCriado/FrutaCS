@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
+using FrutaCS.Bots;
 using FrutaCS.Player;
 
 namespace FrutaCS.Weapons;
@@ -78,6 +79,30 @@ public partial class WeaponSystem : Node3D
     public int MagAmmo => _magAmmo;
     public int ReserveAmmo => _reserveAmmo;
     public string WeaponId => Weapon != null ? Weapon.WeaponId : "";
+
+    /// <summary>
+    /// Swap to another weapon at runtime (pickups, round re-arm). Rebuilds
+    /// stats/simulation/ammo from the data, clears the spray state (a fresh
+    /// gun has no recoil debt), unscopes and unpouches the reload.
+    /// </summary>
+    public void Equip(WeaponData data)
+    {
+        if (data == null)
+            return;
+        Weapon = data;
+        _stats = data.ToStats();
+        _sim = new WeaponSim(_stats);
+        _isMelee = _stats.MeleeRangeU > 0f;
+        _magAmmo = _stats.MagSize;
+        _reserveAmmo = _stats.ReserveAmmo;
+        _shotsInBurst = 0;
+        _prevRecoil = Vector2.Zero;
+        ViewPunchDeg = Vector2.Zero;
+        _scoped = false;
+        _reloading = false;
+        BuildPlaceholderSound();
+        AdjustPlaceholderViewmodel();
+    }
 
     public Stance CurrentStance
     {
@@ -273,6 +298,7 @@ public partial class WeaponSystem : Node3D
         Vector3 firstEnd = origin + dir * rangeU;
         float firstDist = rangeU;
         bool firstRecorded = false;
+        GodotObject firstCollider = null;
         int maxSegs = _stats.PenetrationStages + 1;
         for (int i = 0; i < maxSegs; i++)
         {
@@ -286,6 +312,7 @@ public partial class WeaponSystem : Node3D
                 firstRecorded = true;
                 firstEnd = hitPos;
                 firstDist = origin.DistanceTo(hitPos);
+                firstCollider = collider;
             }
             if (collider is not StaticBody3D)
                 break;
@@ -301,7 +328,30 @@ public partial class WeaponSystem : Node3D
         ImpactLog.Add(new ShotMark(firstEnd, damage));
         if (ImpactLog.Count > 64)
             ImpactLog.RemoveAt(0);
+        BillFlesh(firstCollider, damage);
         PlayBang(secondary);
+    }
+
+    /// <summary>
+    /// First surface is a fighter: bill damage on enemies only (no
+    /// friendly fire in milestone 1; teammates stop the bullet). Melee
+    /// stabs arrive here too (same FireHitscan path, wall stages are 0).
+    /// </summary>
+    private void BillFlesh(GodotObject collider, int damage)
+    {
+        if (collider == null || damage <= 0)
+            return;
+        int myTeam = _body != null ? _body.Team : 0;
+        if (collider is PlayerBody player)
+        {
+            if (player != _body && !player.IsDead && player.Team != myTeam)
+                player.TakeDamage(damage);
+        }
+        else if (collider is Bot bot)
+        {
+            if (!bot.IsDead && bot.Team != myTeam)
+                bot.TakeDamage(damage);
+        }
     }
 
     private Godot.Collections.Dictionary QueryRay(Vector3 from, Vector3 to)

@@ -132,6 +132,22 @@ public class RoundManagerTests
     }
 
     [TestCase]
+    public void RoundStartedFiresEveryRound()
+    {
+        // Map glue (Task 8) re-arms off this: first round from StartMatch,
+        // then one fire per decided round, golden replays included.
+        var m = new RoundManager();
+        int fires = 0;
+        m.RoundStarted += () => fires++;
+        m.StartMatch(1); // 1v1: a single kill decides a round.
+        Assertions.AssertThat(fires).IsEqual(1);
+        m.OnKill(Team.T);
+        Assertions.AssertThat(fires).IsEqual(2);
+        m.OnKill(Team.CT);
+        Assertions.AssertThat(fires).IsEqual(3);
+    }
+
+    [TestCase]
     public void GameSceneShape()
     {
         string tscn = File.ReadAllText(Path.Combine(RepoRoot(), "src", "game", "Game.tscn"));

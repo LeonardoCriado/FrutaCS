@@ -38,9 +38,17 @@ public partial class PlayerBody : CharacterBody3D
     [Export] public MovementConfig Config;
     [Export] public float MouseSensitivity = 0.0022f;
 
+    /// <summary>Side: 0 = CT, anything else = T (bots read this for billing).</summary>
+    [Export] public int Team;
+
+    /// <summary>Milestone-1 health: no armor model (same simplification as bots).</summary>
+    public const int MaxHp = 100;
+
     private MovementSim _sim = new();
     private MovementParams _params;
     private float _pitch;
+    private int _stepClock;
+    private Vector3 _stepAnchor = Vector3.Zero;
     private FrutaCS.Weapons.WeaponSystem _weapon;
 
     public Node3D Head { get; private set; }
@@ -48,6 +56,11 @@ public partial class PlayerBody : CharacterBody3D
     public float HorizontalSpeedU { get; private set; }
     public bool IsDucking { get; private set; }
     public bool SimOnFloor => _sim.IsOnFloor;
+    public int Hp { get; private set; } = MaxHp;
+    public bool IsDead { get; private set; }
+
+    /// <summary>Weapon glue under Head/Camera3D/WeaponView (null until _Ready).</summary>
+    public FrutaCS.Weapons.WeaponSystem ArmedWeapon => _weapon;
 
     /// <summary>
     /// Aim basis from yaw + pitch WITHOUT the weapon's view punch.
@@ -133,6 +146,8 @@ public partial class PlayerBody : CharacterBody3D
 
     public override void _PhysicsProcess(double delta)
     {
+        if (IsDead)
+            return;
         float dt = (float)delta; // Fixed 1/60 s: physics_ticks_per_second=60.
         Vector2 keys = Input.GetVector(
             InputActions.MoveLeft, InputActions.MoveRight,
@@ -155,6 +170,21 @@ public partial class PlayerBody : CharacterBody3D
 
         Vector3 h = new(_sim.Velocity.X, 0f, _sim.Velocity.Z);
         HorizontalSpeedU = h.Length();
+        // Seam step-up (same box-joint pinches as bots): gate on actual
+        // displacement, which pinch lurches can't fake. Ordinary walking
+        // covers 100u+ per 30-tick window.
+        _stepClock++;
+        if (_stepClock >= 30)
+        {
+            Vector3 moved = GlobalPosition - _stepAnchor;
+            moved.Y = 0f;
+            float baseSpeed = walkHeld ? _params.WalkSpeed : _params.RunSpeed;
+            float intended = baseSpeed * Mathf.Min(1f, wishDir.Length());
+            if (IsOnFloor() && wishDir.Length() > 0.5f && moved.Length() < 8f)
+                StepUp.TryStep(this, wishDir, intended);
+            _stepAnchor = GlobalPosition;
+            _stepClock = 0;
+        }
         Head.Position = new Vector3(0f, IsDucking ? DuckEyeHeightU : EyeHeightU, 0f);
         ApplyCameraRotation();
     }
@@ -171,4 +201,36 @@ public partial class PlayerBody : CharacterBody3D
     private Vector2 GetViewPunchDeg() => _weapon != null ? _weapon.ViewPunchDeg : Vector2.Zero;
 
     private float GetScopeSensitivityScale() => _weapon != null ? _weapon.ScopeSensitivityScale : 1f;
+
+    /// <summary>
+    /// Same damage path as bots: integer headless damage in, death at zero.
+    /// Bot fire bills the player through this (Task 8 closes the Task 6
+    /// unbilled gap); death reports to the match glue, which owns the round.
+    /// </summary>
+    public void TakeDamage(int amount)
+    {
+        if (IsDead || amount <= 0)
+            return;
+        Hp -= amount;
+        if (Hp <= 0)
+            Die();
+    }
+
+    /// <summary>Round reset: back to full health at the given spawn.</summary>
+    public void Respawn(Vector3 pos)
+    {
+        IsDead = false;
+        Hp = MaxHp;
+        GlobalPosition = pos;
+        _sim.SyncFromEngine(Vector3.Zero, true);
+        Velocity = Vector3.Zero;
+    }
+
+    private void Die()
+    {
+        IsDead = true;
+        Hp = 0;
+        Velocity = Vector3.Zero;
+        GetTree().CallGroup("match_manager", "OnFighterDown", Team, this);
+    }
 }

@@ -73,6 +73,16 @@ public sealed class BotBrain
 
     public BotState CurrentState => _state;
 
+    /// <summary>Round reset: back to Patrol with no memory of the last round.</summary>
+    public void Reset()
+    {
+        _state = BotState.Patrol;
+        _lastKnownEnemy = Vector3.Zero;
+        _hasLastKnown = false;
+        _timeSinceSeen = 0f;
+        _reactionElapsed = 0f;
+    }
+
     public static bool SeesEnemy(in BotPerception p, in BotParams prm, out float distU)
     {
         distU = 0f;
@@ -153,9 +163,16 @@ public sealed class BotBrain
 
             case BotState.Pickup:
             default:
-                if (!p.HasPickup)
+                // Drop the gun run the moment it stops being an upgrade
+                // (e.g. grabbed a better gun en route): trekking to a
+                // downgrade pins bots on geometry for nothing.
+                if (!p.HasPickup || p.PickupTier <= p.CurrentTier)
                     return Enter(BotState.Patrol, new BotDecision(BotState.Patrol, p.PatrolPoint, false, false));
-                if (seen)
+                // Distant sightings don't break off the run (grab first,
+                // fight armed): only an immediate threat inside ThreatRadiusU
+                // interrupts. Legacy ThreatRadiusU <= 0 keeps the old
+                // hair-trigger (any sighting engages).
+                if (seen && (prm.ThreatRadiusU <= 0f || enemyDist <= prm.ThreatRadiusU))
                     return Engage(p.EnemyPos, enemyDist, prm.AttackRangeU);
                 return new BotDecision(BotState.Pickup, p.PickupPos, false, true);
         }

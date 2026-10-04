@@ -19,6 +19,14 @@ public struct BotParams
     public float LoseSightSec;
     public float HearingRadiusU;
 
+    /// <summary>
+    /// Pickup interruption radius (map 1 default 400u): a visible enemy
+    /// inside this range breaks off a gun run (immediate threat); farther
+    /// sightings don't (grab first, fight armed). Zero or negative keeps
+    /// the legacy hair-trigger (any sighting interrupts).
+    /// </summary>
+    public float ThreatRadiusU;
+
     public static BotParams Default => new()
     {
         ReactionSec = 0.4f,
@@ -29,5 +37,6 @@ public struct BotParams
         AttackRangeU = 1000f,
         LoseSightSec = 5f,
         HearingRadiusU = 800f,
+        ThreatRadiusU = 400f,
     };
 }

@@ -110,6 +110,93 @@ public class BotBrainTests
     }
 
     [TestCase]
+    public void DropsPickupRunWhenGunNoLongerUpgrade()
+    {
+        // Enter Pickup for the AK (tier 2 > deagle 1), then upgrade past it
+        // mid-route (simulated by current tier 2): the floor gun is no
+        // longer an upgrade, so the bot patrols instead of trekking to a
+        // downgrade (and pinning on geometry for nothing).
+        var brain = new BotBrain();
+        var p = BotParams.Default;
+        var pickup = new BotPerception(
+            Vector3.Zero, Vector3.Forward,
+            false, Vector3.Zero,
+            false, Vector3.Zero,
+            true, new Vector3(200f, 0f, 0f), 2, 1,
+            new Vector3(500f, 0f, 500f));
+        BotDecision d = brain.Update(pickup, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Pickup);
+        var stale = pickup with { PickupTier = 2, CurrentTier = 2 };
+        BotDecision d2 = brain.Update(stale, p, Delta);
+        Assertions.AssertThat(d2.State).IsEqual(BotState.Patrol);
+        Assertions.AssertThat(d2.WantPickup).IsFalse();
+    }
+
+    [TestCase]
+    public void PickupIgnoresDistantEnemy()
+    {
+        // Gun run in progress (tier 2 floor gun, tier 1 in hand), enemy
+        // visible at 800u (inside sight, outside the 400u threat radius):
+        // grab first, fight armed — the run continues.
+        var brain = new BotBrain();
+        var p = BotParams.Default;
+        var pickup = new BotPerception(
+            Vector3.Zero, Vector3.Forward,
+            false, Vector3.Zero,
+            false, Vector3.Zero,
+            true, new Vector3(200f, 0f, 0f), 2, 1,
+            new Vector3(500f, 0f, 500f));
+        BotDecision d = brain.Update(pickup, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Pickup);
+        var spotted = pickup with { HasEnemy = true, EnemyPos = new Vector3(0f, 0f, -800f) };
+        BotDecision d2 = brain.Update(spotted, p, Delta);
+        Assertions.AssertThat(d2.State).IsEqual(BotState.Pickup);
+        Assertions.AssertThat(d2.WantPickup).IsTrue();
+    }
+
+    [TestCase]
+    public void PickupInterruptedByCloseEnemy()
+    {
+        // Same run, but the enemy is 300u away (inside threat radius):
+        // immediate threat wins, the bot engages.
+        var brain = new BotBrain();
+        var p = BotParams.Default;
+        var pickup = new BotPerception(
+            Vector3.Zero, Vector3.Forward,
+            false, Vector3.Zero,
+            false, Vector3.Zero,
+            true, new Vector3(200f, 0f, 0f), 2, 1,
+            new Vector3(500f, 0f, 500f));
+        BotDecision d = brain.Update(pickup, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Pickup);
+        var spotted = pickup with { HasEnemy = true, EnemyPos = new Vector3(0f, 0f, -300f) };
+        BotDecision d2 = brain.Update(spotted, p, Delta);
+        Assertions.AssertThat(d2.State).IsEqual(BotState.Attack);
+        Assertions.AssertThat(d2.WantPickup).IsFalse();
+    }
+
+    [TestCase]
+    public void ZeroThreatRadiusKeepsLegacyInterrupt()
+    {
+        // ThreatRadiusU <= 0 disables the gate: any sighting engages,
+        // the Task 6 hair-trigger. Guards bare-struct construction too
+        // (a zero-initialized BotParams must behave like the old brain).
+        var brain = new BotBrain();
+        var p = BotParams.Default with { ThreatRadiusU = 0f };
+        var pickup = new BotPerception(
+            Vector3.Zero, Vector3.Forward,
+            false, Vector3.Zero,
+            false, Vector3.Zero,
+            true, new Vector3(200f, 0f, 0f), 2, 1,
+            new Vector3(500f, 0f, 500f));
+        BotDecision d = brain.Update(pickup, p, Delta);
+        Assertions.AssertThat(d.State).IsEqual(BotState.Pickup);
+        var spotted = pickup with { HasEnemy = true, EnemyPos = new Vector3(0f, 0f, -800f) };
+        BotDecision d2 = brain.Update(spotted, p, Delta);
+        Assertions.AssertThat(d2.State).IsEqual(BotState.Attack);
+    }
+
+    [TestCase]
     public void LosesEnemyReturnsToPatrol()
     {
         var brain = new BotBrain();

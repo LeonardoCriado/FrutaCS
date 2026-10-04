@@ -63,6 +63,14 @@ public sealed class RoundManager
     /// <summary>Fires on every phase transition (Idle→Live, →GoldenRound, →Finished).</summary>
     public event Action<MatchPhase>? PhaseChanged;
 
+    /// <summary>
+    /// Fires at the start of every round, including the first (BeginRound
+    /// runs inside StartMatch) and the golden-round replays. The map glue
+    /// (spawns, loadouts, pickup respawn) subscribes to this; RoundManager
+    /// itself stays engine-free.
+    /// </summary>
+    public event Action? RoundStarted;
+
     public MatchPhase Phase { get; private set; } = MatchPhase.Idle;
     public MatchWinner Winner { get; private set; } = MatchWinner.None;
     public int ScoreCT { get; private set; }
@@ -201,6 +209,7 @@ public sealed class RoundManager
         AliveCT = _playersPerTeam;
         AliveT = _playersPerTeam;
         RoundTimeLeft = RoundDurationSec;
+        RoundStarted?.Invoke();
     }
 
     private void Finish(MatchWinner winner)

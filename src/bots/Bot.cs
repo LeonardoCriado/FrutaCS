@@ -1,5 +1,6 @@
 using Godot;
 
+using FrutaCS.Maps;
 using FrutaCS.Player;
 using FrutaCS.Weapons;
 
@@ -22,10 +23,10 @@ namespace FrutaCS.Bots;
 /// infinite-reserve reload (2.5 s placeholder, same as WeaponSystem).</item>
 /// </list>
 /// Enemy scan covers the opposite-team "bots" group plus the "players"
-/// group. Map pickups (Task 7+ map work) appear as Node3D in group
+/// group. Map pickups are <see cref="Maps.WeaponPickup"/> nodes in group
 /// "weapon_pickups" with an int meta "tier" (knife 0, pistol 1, rifle 2,
-/// awp 3); until those entities exist HasPickup is always false and the
-/// Pickup state stays dormant (brain-covered, glue-wired).
+/// awp 3) and a bool meta "taken"; grabs claim the entity (stats swap to
+/// the new gun) so rivals find it taken.
 /// </summary>
 public partial class Bot : CharacterBody3D
 {
@@ -42,7 +43,8 @@ public partial class Bot : CharacterBody3D
     private const float PatrolHalfU = 850f;
     private const float MaxHp = 100f;
     private const float KnifeIntervalSec = 0.4f;
-    private const float UnstickDetourSec = 3f;
+    private const float UnstickStillSec = 2.5f;
+    private const float UnstickDetourSec = 2f;
 
     [Export] public int Team;
     [Export] public MovementConfig Config;
@@ -50,6 +52,7 @@ public partial class Bot : CharacterBody3D
     [Export] public float ReactionSec = 0.4f;
     [Export] public float AimErrorDeg = 3f;
     [Export] public int BurstLen = 3;
+    [Export] public float ThreatRadiusU = 400f;
     [Export] public float SightRangeU = 1500f;
     [Export] public float SightFovDeg = 90f;
     [Export] public float AttackRangeU = 1000f;
@@ -64,7 +67,10 @@ public partial class Bot : CharacterBody3D
     private WeaponStats _stats;
     private bool _isMelee;
     private int _currentTier = 1;
-    private NavigationAgent3D _agent;
+    private string _weaponId = "deagle";
+
+    /// <summary>Weapon currently equipped (base sidearm or grabbed pickup).</summary>
+    public string CurrentWeaponId => _weaponId;
     private readonly RandomNumberGenerator _rng = new();
 
     private Vector3 _patrolPoint;
@@ -80,15 +86,81 @@ public partial class Bot : CharacterBody3D
     private bool _reloading;
     private float _reloadTimerSec;
     private float _stillSec;
+    private int _stepClock;
+    private Vector3 _stepAnchor = Vector3.Zero;
+    private readonly PhysicsRayQueryParameters3D _query = PhysicsRayQueryParameters3D.Create(Vector3.Zero, Vector3.Zero);
     private Vector3 _unstickPoint = Vector3.Zero;
     private float _unstickSec;
     private bool _nearbyTaken = true;
+    private Node3D _nearbyNode;
     private Vector3 _nearbyPos = Vector3.Zero;
     private int _nearbyTier;
 
     public BotState State => _brain.CurrentState;
     public int Hp { get; private set; } = 100;
     public bool IsDead { get; private set; }
+
+    /// <summary>
+    /// Per-spawn difficulty mix from the map layer (spec §6). Call after
+    /// Instantiate, before AddChild: _Ready bakes these into _params.
+    /// </summary>
+    public void ApplyMix(BotParams mix)
+    {
+        ReactionSec = mix.ReactionSec;
+        AimErrorDeg = mix.AimErrorDeg;
+        BurstLen = mix.BurstLen;
+        ThreatRadiusU = mix.ThreatRadiusU;
+    }
+
+    /// <summary>Round reset: full health, base sidearm, clean brain, at spawn.</summary>
+    public void Respawn(Vector3 pos, Vector3 faceTarget)
+    {
+        IsDead = false;
+        Hp = 100;
+        GlobalPosition = pos;
+        Vector3 face = faceTarget - pos;
+        face.Y = 0f;
+        if (face.Length() > 1f)
+            Rotation = new Vector3(0f, Mathf.Atan2(-face.X, -face.Z), 0f);
+        ResetLoadout();
+        _brain.Reset();
+        _patrolPoint = PickPatrolPoint();
+        _heardAge = float.MaxValue;
+        _cooldownSec = 0f;
+        _burstPauseSec = 0f;
+        _shotsInBurst = 0;
+        _reloading = false;
+        _stillSec = 0f;
+        _unstickSec = 0f;
+        var shape = GetNodeOrNull<CollisionShape3D>("CollisionShape3D");
+        if (shape != null)
+            shape.SetDeferred("disabled", false);
+        var body = GetNodeOrNull<MeshInstance3D>("Body");
+        if (body != null)
+            body.Show();
+        SetPhysicsProcess(true);
+        _sim.SyncFromEngine(Vector3.Zero, true);
+        Velocity = Vector3.Zero;
+    }
+
+    /// <summary>Back to the map base sidearm (map 1: deagle, the scene default).</summary>
+    public void ResetLoadout()
+    {
+        if (Weapon == null)
+            return;
+        SetLoadout(Weapon.ToStats(), Weapon.WeaponId);
+    }
+
+    /// <summary>Shared equip path: stats, sim, magazine, tier and id follow.</summary>
+    private void SetLoadout(WeaponStats stats, string weaponId)
+    {
+        _stats = stats;
+        _gunSim = new WeaponSim(_stats);
+        _isMelee = _stats.MeleeRangeU > 0f;
+        _magAmmo = _stats.MagSize;
+        _currentTier = TierOf(weaponId);
+        _weaponId = weaponId;
+    }
 
     public static int TierOf(string weaponId) => weaponId switch
     {
@@ -141,19 +213,29 @@ public partial class Bot : CharacterBody3D
             AttackRangeU = AttackRangeU,
             LoseSightSec = LoseSightSec,
             HearingRadiusU = HearingRadiusU,
+            ThreatRadiusU = ThreatRadiusU,
         };
         if (Weapon != null)
         {
-            _stats = Weapon.ToStats();
-            _gunSim = new WeaponSim(_stats);
-            _isMelee = _stats.MeleeRangeU > 0f;
-            _magAmmo = _stats.MagSize;
-            _currentTier = TierOf(_stats.WeaponId);
+            SetLoadout(Weapon.ToStats(), Weapon.WeaponId);
         }
-        _agent = GetNodeOrNull<NavigationAgent3D>("NavigationAgent3D");
+        // NOTE: the NavigationAgent3D scene node is intentionally unused:
+        // steering queries NavigationServer3D directly (synchronous fresh
+        // paths every tick), because the node's async path state goes
+        // stale and thrashes on goal changes. The node stays for the
+        // scene-shape test and future avoidance work.
         _patrolPoint = PickPatrolPoint();
         PaintTeamColor();
+        _query.Exclude = new Godot.Collections.Array<Rid> { GetRid() };
     }
+
+    /// <summary>
+    /// Shared sight/fire raycast (one reusable query object: per-tick
+    /// allocations of query objects pressure the .NET/Godot bridge).
+    /// Callers set <see cref="_query"/> From/To first; self excluded.
+    /// </summary>
+    private Godot.Collections.Dictionary CastRay(PhysicsRayQueryParameters3D query) =>
+        GetWorld3D().DirectSpaceState.IntersectRay(query);
 
     public override void _PhysicsProcess(double delta)
     {
@@ -170,6 +252,7 @@ public partial class Bot : CharacterBody3D
             !_nearbyTaken, _nearbyPos, _nearbyTier, _currentTier,
             _patrolPoint);
         BotDecision decision = _brain.Update(perception, _params, dt);
+        Steer(decision, dt);
         Steer(decision, dt);
         MaybeGrab(decision);
         MaybeFire(decision);
@@ -210,7 +293,9 @@ public partial class Bot : CharacterBody3D
         }
         foreach (Node node in GetTree().GetNodesInGroup("players"))
         {
-            if (node is Node3D player && player != this)
+            // Same-team humans are never enemies (otherwise bots pile onto
+            // their own player: Attack-hold without firing, and melt).
+            if (node is PlayerBody player && player.Team != Team && !player.IsDead)
                 Consider(player, player.GlobalPosition, eye, ref best);
         }
     }
@@ -223,9 +308,9 @@ public partial class Bot : CharacterBody3D
         if (dist >= best || dist > _params.SightRangeU)
             return;
         Vector3 chest = candidatePos + Vector3.Up * ChestHeightU;
-        var query = PhysicsRayQueryParameters3D.Create(eye, chest);
-        query.Exclude = new Godot.Collections.Array<Rid> { GetRid() };
-        Godot.Collections.Dictionary hit = GetWorld3D().DirectSpaceState.IntersectRay(query);
+        _query.From = eye;
+        _query.To = chest;
+        Godot.Collections.Dictionary hit = CastRay(_query);
         bool visible = hit.Count == 0 || (GodotObject)hit["collider"] == candidate;
         if (!visible)
             return;
@@ -238,10 +323,13 @@ public partial class Bot : CharacterBody3D
     private void ScanPickups()
     {
         _nearbyTaken = true;
+        _nearbyNode = null;
         float best = float.MaxValue;
         foreach (Node node in GetTree().GetNodesInGroup("weapon_pickups"))
         {
             if (node is not Node3D pickup)
+                continue;
+            if ((bool)pickup.GetMeta("taken", false))
                 continue;
             int tier = (int)pickup.GetMeta("tier", -1);
             if (tier < 0)
@@ -251,6 +339,7 @@ public partial class Bot : CharacterBody3D
             if (d.Length() < best)
             {
                 best = d.Length();
+                _nearbyNode = pickup;
                 _nearbyPos = pickup.GlobalPosition;
                 _nearbyTier = tier;
                 _nearbyTaken = false;
@@ -281,10 +370,26 @@ public partial class Bot : CharacterBody3D
         Vector3 wish = Vector3.Zero;
         if (toTarget.Length() > stopDist)
         {
-            if (_agent != null)
-                _agent.TargetPosition = goal;
-            Vector3 next = _agent != null ? _agent.GetNextPathPosition() - GlobalPosition : toTarget;
-            next.Y = 0f;
+            // Direct synchronous server query every physics tick (the
+            // NavigationAgent3D node is bypassed: its async/threaded path
+            // state goes stale and thrashes on goal flaps, steering bots
+            // back-and-forth instead of progressing). MapGetPath returns a
+            // fresh complete path from the CURRENT position, so following
+            // can never chase a stale corner. Both endpoints are projected
+            // onto the mesh plane (the bake is flat): steering is purely
+            // horizontal and bodies resolve height via gravity/snap.
+            // Partial paths (unreachable goals) end at the closest
+            // reachable point; arrival/grab radii finish those.
+            Vector3 flatFrom = new(GlobalPosition.X, 0f, GlobalPosition.Z);
+            Vector3 flatGoal = new(goal.X, 0f, goal.Z);
+            Vector3[] pts = NavigationServer3D.MapGetPath(
+                GetWorld3D().NavigationMap, flatFrom, flatGoal, true);
+            Vector3 next = toTarget;
+            if (pts.Length >= 2)
+            {
+                next = pts[1] - GlobalPosition;
+                next.Y = 0f;
+            }
             wish = next.Length() > 1f ? next.Normalized() : toTarget.Normalized();
         }
         var input = new MovementInput(wish, false, false);
@@ -312,7 +417,34 @@ public partial class Bot : CharacterBody3D
             _stillSec += dt;
         else
             _stillSec = 0f;
-        if (_stillSec > 5f)
+        // Seam step-up (cheap, local): box-authored slope toes pinch
+        // capsules exactly at feet level, and the pinch lurches (brief
+        // motion bursts that defeat stillness timers). Gate on actual
+        // displacement instead: strong intent + far target + crawling
+        // under 8u per 30 ticks, in navigation states only (never mid-
+        // fight: a combat pop would dodge). Ordinary walking covers
+        // 100u+ per window; grinders get stepped every half second.
+        // Patrol pins are usually impossible goals (a random point inside
+        // a navmesh hole): deal a fresh point instead of stepping in
+        // place; the debounce adopts it once it persists.
+        _stepClock++;
+        if (_stepClock >= 30)
+        {
+            Vector3 moved = GlobalPosition - _stepAnchor;
+            moved.Y = 0f;
+            if (IsOnFloor() && wish.Length() > 0.5f && brainToTarget.Length() > 64f
+                && moved.Length() < 8f
+                && (decision.State == BotState.Patrol || decision.State == BotState.Pickup))
+            {
+                if (decision.State == BotState.Patrol)
+                    _patrolPoint = PickPatrolPoint();
+                else
+                    FrutaCS.Player.StepUp.TryStep(this, wish, _moveParams.RunSpeed);
+            }
+            _stepAnchor = GlobalPosition;
+            _stepClock = 0;
+        }
+        if (_stillSec > UnstickStillSec)
         {
             _stillSec = 0f;
             _patrolPoint = PickPatrolPoint();
@@ -323,16 +455,42 @@ public partial class Bot : CharacterBody3D
 
     private void MaybeGrab(BotDecision decision)
     {
-        if (!decision.WantPickup || _nearbyTaken)
+        if (!decision.WantPickup || _nearbyTaken || _nearbyNode == null)
             return;
         Vector3 d = _nearbyPos - GlobalPosition;
         d.Y = 0f;
         if (d.Length() > GrabU)
             return;
-        // No pickup entities exist yet in milestone 1: latch the tier so the
-        // brain stands down. Stat/visual swap arrives with map pickups.
-        _currentTier = _nearbyTier;
+        // Claim the entity so rivals (bots and the human) find it taken;
+        // a lost race just rescans next tick.
+        string weaponId = "";
+        if (_nearbyNode is WeaponPickup pickup)
+            weaponId = pickup.Grab();
+        if (weaponId == "")
+        {
+            _nearbyTaken = true;
+            _nearbyNode = null;
+            return;
+        }
+        SwapTo(weaponId);
         _nearbyTaken = true;
+        _nearbyNode = null;
+    }
+
+    /// <summary>
+    /// Equip a grabbed floor gun (closes the Task 6 deferred swap): stats,
+    /// sim, magazine and tier all follow the new weapon, like a fresh spawn.
+    /// Unknown ids keep the current gun.
+    /// </summary>
+    private void SwapTo(string weaponId)
+    {
+        WeaponData data = GD.Load<WeaponData>($"res://data/weapons/{weaponId}.tres");
+        if (data == null)
+            return;
+        SetLoadout(data.ToStats(), weaponId);
+        _reloading = false;
+        _shotsInBurst = 0;
+        _burstPauseSec = 0f;
     }
 
     private void MaybeFire(BotDecision decision)
@@ -368,9 +526,10 @@ public partial class Bot : CharacterBody3D
             dir = dir.Rotated(ax0, Mathf.DegToRad(r * Mathf.Sin(t)));
             dir = dir.Rotated(ax1, Mathf.DegToRad(r * Mathf.Cos(t)));
         }
-        var query = PhysicsRayQueryParameters3D.Create(eye, eye + dir * HitscanRangeU);
-        query.Exclude = new Godot.Collections.Array<Rid> { GetRid() };
-        Godot.Collections.Dictionary hit = GetWorld3D().DirectSpaceState.IntersectRay(query);
+        var query = _query;
+        query.From = eye;
+        query.To = eye + dir * HitscanRangeU;
+        Godot.Collections.Dictionary hit = CastRay(query);
         if (hit.Count > 0)
         {
             Vector3 hitPos = (Vector3)hit["position"];
@@ -380,9 +539,14 @@ public partial class Bot : CharacterBody3D
                 // First surface is flesh: same staged damage rules as players.
                 other.TakeDamage(_gunSim.DamageAt(impactDist, false, 0f));
             }
-            // Player health arrives with the round rules (Task 7+): until
-            // then the impact resolves with no one to bill. Walls stop the
-            // bullet (no bot wallbang: simplification, disclosed).
+            else if ((GodotObject)hit["collider"] is PlayerBody player
+                && player.Team != Team && !player.IsDead)
+            {
+                // Bot-vs-player billing (Task 6 left it unbilled): the same
+                // staged damage the player build applies to bots.
+                player.TakeDamage(_gunSim.DamageAt(impactDist, false, 0f));
+            }
+            // Walls stop the bullet (no bot wallbang: simplification, disclosed).
         }
         if (!_isMelee)
             _magAmmo--;
@@ -412,14 +576,45 @@ public partial class Bot : CharacterBody3D
 
     /// <summary>Short sidestep for the unstick detour: near enough to finish
     /// inside <see cref="UnstickDetourSec"/>, after which the brain retries
-    /// its original goal (possibly from a better angle).</summary>
+    /// its original goal (possibly from a better angle). Candidates are
+    /// verified by a chest-height raycast (at the higher endpoint, so ramps
+    /// read clear while walls and covers block): the first clear line wins,
+    /// so the detour itself doesn't wedge on the next face. Falls back to a
+    /// blind sidestep when walled in on all sides; the next cycle retries.
+    /// </summary>
     private Vector3 PickUnstickPoint()
     {
+        for (int i = 0; i < 8; i++)
+        {
+            Vector3 p = RandomDetourPoint(120f, 220f);
+            if (DetourLineClear(p))
+                return p;
+        }
+        return RandomDetourPoint(120f, 220f);
+    }
+
+    private Vector3 RandomDetourPoint(float minU, float maxU)
+    {
         float angle = _rng.Randf() * Mathf.Tau;
-        float dist = _rng.RandfRange(200f, 350f);
+        float dist = _rng.RandfRange(minU, maxU);
         Vector3 p = GlobalPosition + new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
         p.Y = 0f;
         return p;
+    }
+
+    private bool DetourLineClear(Vector3 target)
+    {
+        float height = Mathf.Max(GlobalPosition.Y, 0f) + ChestHeightU;
+        Vector3 from = new(GlobalPosition.X, height, GlobalPosition.Z);
+        Vector3 to = new(target.X, height, target.Z);
+        _query.From = from;
+        _query.To = to;
+        Godot.Collections.Dictionary hit = CastRay(_query);
+        if (hit.Count == 0)
+            return true;
+        // Only fighters in the way: they move, and bodies slide past each
+        // other. Static geometry means pushing into another face.
+        return (GodotObject)hit["collider"] is not StaticBody3D;
     }
 
     private void PaintTeamColor()
@@ -445,5 +640,6 @@ public partial class Bot : CharacterBody3D
         if (body != null)
             body.Hide();
         SetPhysicsProcess(false);
+        GetTree().CallGroup("match_manager", "OnFighterDown", Team, this);
     }
 }
