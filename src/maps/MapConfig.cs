@@ -5,7 +5,8 @@ namespace FrutaCS.Maps;
 /// <summary>
 /// Map 1 (fy_pileta) data, per spec §7: symmetric ~2000x2000u arena,
 /// 7 spawns per team on opposed arcs, disputed mid + two side lanes,
-/// jumpable 64u covers, 128u+ perimeter walls. Spawn/pickup numbers are
+/// jumpable 40u covers (45u jump apex clears with margin; GoldSrc-faithful,
+/// matches the tennis reference median exactly), 128u+ perimeter walls. Spawn/pickup numbers are
 /// tuned against docs/reference/mediciones.md (poolday row: CT-T centroid
 /// 962u, enemy min/mean/max 635/1047/1436u, clear sightline 1249u — all
 /// within ±10%; same-team spacing 131.8u vs iceworld 126u); see
@@ -103,8 +104,8 @@ public partial class MapConfig : Resource
     };
 
     /// <summary>
-    /// Low-cover centers (feet on the supporting surface). All 64u tall
-    /// (spec: jumpable); C1 is 80x80 on the mid island, the rest 128x128.
+    /// Low-cover centers (feet on the supporting surface). All 40u tall
+    /// (spec §7 low jumpable covers); C1 is 80x80 on the mid island, the rest 128x128.
     /// </summary>
     [Export]
     public Vector3[] CoverSpots = new Vector3[]
@@ -118,17 +119,17 @@ public partial class MapConfig : Resource
         new Vector3(-560f, 0f, 260f),
     };
 
-    /// <summary>Cover footprints (full sizes, heights all 64u).</summary>
+    /// <summary>Cover footprints (full sizes, heights all 40u).</summary>
     [Export]
     public Vector3[] CoverSizes = new Vector3[]
     {
-        new Vector3(80f, 64f, 80f),
-        new Vector3(128f, 64f, 128f),
-        new Vector3(128f, 64f, 128f),
-        new Vector3(128f, 64f, 128f),
-        new Vector3(128f, 64f, 128f),
-        new Vector3(128f, 64f, 128f),
-        new Vector3(128f, 64f, 128f),
+        new Vector3(80f, 40f, 80f),
+        new Vector3(128f, 40f, 128f),
+        new Vector3(128f, 40f, 128f),
+        new Vector3(128f, 40f, 128f),
+        new Vector3(128f, 40f, 128f),
+        new Vector3(128f, 40f, 128f),
+        new Vector3(128f, 40f, 128f),
     };
 
     /// <summary>Empty pool basin opening (deck hole): x in [-320, 320], z in [-160, 160].</summary>

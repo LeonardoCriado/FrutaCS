@@ -85,9 +85,9 @@ public partial class WeaponPickup : Area3D
             return;
         if (body is not PlayerBody player || player.IsDead)
             return;
-        Vector3 d = body.GlobalPosition - GlobalPosition;
-        d.Y = 0f;
-        if (d.Length() > ClaimRadiusU)
+        // Full 3D range (same guard as ClaimRadiusU): the AWP sits a level
+        // below the deck and must not be claimable through the floor.
+        if (body.GlobalPosition.DistanceTo(GlobalPosition) > ClaimRadiusU)
             return; // Stale entered (see ClaimRadiusU): never bill it.
         WeaponData data = GD.Load<WeaponData>($"res://data/weapons/{WeaponId}.tres");
         if (data == null)

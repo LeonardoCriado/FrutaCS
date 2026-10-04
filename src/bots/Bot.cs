@@ -88,6 +88,11 @@ public partial class Bot : CharacterBody3D
     private float _stillSec;
     private int _stepClock;
     private Vector3 _stepAnchor = Vector3.Zero;
+    private Vector3[] _pathPts = [];
+    private Vector3 _pathGoal = new(float.PositiveInfinity, 0f, 0f);
+    private int _pathIdx;
+    private int _pathClock = 99;
+    private bool _pathDirty = true;
     private readonly PhysicsRayQueryParameters3D _query = PhysicsRayQueryParameters3D.Create(Vector3.Zero, Vector3.Zero);
     private Vector3 _unstickPoint = Vector3.Zero;
     private float _unstickSec;
@@ -125,6 +130,7 @@ public partial class Bot : CharacterBody3D
         ResetLoadout();
         _brain.Reset();
         _patrolPoint = PickPatrolPoint();
+        _pathDirty = true; // Teleported: any cached path is garbage.
         _heardAge = float.MaxValue;
         _cooldownSec = 0f;
         _burstPauseSec = 0f;
@@ -253,7 +259,6 @@ public partial class Bot : CharacterBody3D
             _patrolPoint);
         BotDecision decision = _brain.Update(perception, _params, dt);
         Steer(decision, dt);
-        Steer(decision, dt);
         MaybeGrab(decision);
         MaybeFire(decision);
     }
@@ -334,6 +339,11 @@ public partial class Bot : CharacterBody3D
             int tier = (int)pickup.GetMeta("tier", -1);
             if (tier < 0)
                 continue;
+            // Same-level only: deck guns read through the basin floor from
+            // above (and vice versa). Deck is y=0, basin floor y=-96; 72u
+            // splits them while ramp midpoints still see both sides.
+            if (Mathf.Abs(pickup.GlobalPosition.Y - GlobalPosition.Y) > 72f)
+                continue;
             Vector3 d = pickup.GlobalPosition - GlobalPosition;
             d.Y = 0f;
             if (d.Length() < best)
@@ -370,25 +380,43 @@ public partial class Bot : CharacterBody3D
         Vector3 wish = Vector3.Zero;
         if (toTarget.Length() > stopDist)
         {
-            // Direct synchronous server query every physics tick (the
-            // NavigationAgent3D node is bypassed: its async/threaded path
-            // state goes stale and thrashes on goal flaps, steering bots
-            // back-and-forth instead of progressing). MapGetPath returns a
-            // fresh complete path from the CURRENT position, so following
-            // can never chase a stale corner. Both endpoints are projected
-            // onto the mesh plane (the bake is flat): steering is purely
-            // horizontal and bodies resolve height via gravity/snap.
-            // Partial paths (unreachable goals) end at the closest
-            // reachable point; arrival/grab radii finish those.
+            // Direct synchronous server queries (the NavigationAgent3D node
+            // is bypassed: its async/threaded path state goes stale and
+            // thrashes on goal flaps, steering bots back-and-forth instead
+            // of progressing). Paths are cached and refreshed at ~6 Hz, on
+            // significant goal moves, or when flagged dirty (teleport):
+            // MapGetPath returns fresh complete paths, but allocating one
+            // per bot per tick (780/s) is waste. Corner following advances
+            // past reached corners with capsule-radius slack; an empty or
+            // exhausted list falls back to the straight line. Both
+            // endpoints are projected onto the mesh plane (the bake carries
+            // real heights, but steering stays horizontal while bodies
+            // resolve height via gravity/snap). Partial paths (unreachable
+            // goals) end at the closest reachable point; arrival/grab radii
+            // finish those.
             Vector3 flatFrom = new(GlobalPosition.X, 0f, GlobalPosition.Z);
             Vector3 flatGoal = new(goal.X, 0f, goal.Z);
-            Vector3[] pts = NavigationServer3D.MapGetPath(
-                GetWorld3D().NavigationMap, flatFrom, flatGoal, true);
-            Vector3 next = toTarget;
-            if (pts.Length >= 2)
+            _pathClock++;
+            if (_pathDirty || _pathClock >= 10 || (_pathGoal - flatGoal).Length() > 24f)
             {
-                next = pts[1] - GlobalPosition;
-                next.Y = 0f;
+                _pathPts = NavigationServer3D.MapGetPath(
+                    GetWorld3D().NavigationMap, flatFrom, flatGoal, true);
+                _pathGoal = flatGoal;
+                _pathIdx = 1;
+                _pathClock = 0;
+                _pathDirty = false;
+            }
+            Vector3 next = toTarget;
+            while (_pathIdx < _pathPts.Length)
+            {
+                Vector3 corner = _pathPts[_pathIdx] - GlobalPosition;
+                corner.Y = 0f;
+                if (corner.Length() > 24f)
+                {
+                    next = corner;
+                    break;
+                }
+                _pathIdx++;
             }
             wish = next.Length() > 1f ? next.Normalized() : toTarget.Normalized();
         }
@@ -457,9 +485,9 @@ public partial class Bot : CharacterBody3D
     {
         if (!decision.WantPickup || _nearbyTaken || _nearbyNode == null)
             return;
-        Vector3 d = _nearbyPos - GlobalPosition;
-        d.Y = 0f;
-        if (d.Length() > GrabU)
+        // Full 3D range: the AWP sits a level below the deck, and must not
+        // be claimable through the floor (nor deck guns from the basin).
+        if (_nearbyNode.GlobalPosition.DistanceTo(GlobalPosition) > GrabU)
             return;
         // Claim the entity so rivals (bots and the human) find it taken;
         // a lost race just rescans next tick.

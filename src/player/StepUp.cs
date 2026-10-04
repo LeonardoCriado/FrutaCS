@@ -8,19 +8,19 @@ namespace FrutaCS.Player;
 /// convex kinks (ramp toes, rim lips, island/bridge feet). A capsule can
 /// pinch exactly on such a kink: floor below, slope ahead, edge face
 /// behind — contacts cancel and motion reads zero forever. Real games
-/// solve this with a step-up; GoldSrc has sv_stepsize for the same reason.
+/// solve this with a step-up; GoldSrc sv_stepsize is 18u and so is this.
 /// TryStep moves the body up-forward along one diagonal sweep (never
 /// through a ceiling or wall — the sweep itself is collision-tested), so
 /// tall walls and cover faces are never climbed: the sweep hits anything
-/// the capsule couldn't already walk into. Step height 24u over a 20u
-/// stride clears seams and lips; real covers stay 64u (jumped, never
-/// stepped). A pure vertical pop is not enough: the body would fall back
-/// into the same pinch. Engine-side only (TestMove needs a physics body);
-/// pure sims untouched.
+/// the capsule couldn't already walk into. Step height 18u over a 20u
+/// stride clears seams and lips; covers stay 40u and are jumped (45u apex
+/// clears with margin), never stepped. A pure vertical pop is not enough:
+/// the body would fall back into the same pinch. Engine-side only
+/// (TestMove needs a physics body); pure sims untouched.
 /// </summary>
 public static class StepUp
 {
-    public const float HeightU = 24f;
+    public const float HeightU = 18f;
     public const float StrideU = 20f;
 
     /// <summary>

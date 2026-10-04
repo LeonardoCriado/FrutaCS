@@ -54,10 +54,10 @@ size = Vector3(160, 16, 480)
 size = Vector3(240, 96, 200)
 
 [sub_resource type="BoxMesh" id="CoverBigM"]
-size = Vector3(128, 64, 128)
+size = Vector3(128, 40, 128)
 
 [sub_resource type="BoxMesh" id="CoverMidM"]
-size = Vector3(80, 64, 80)
+size = Vector3(80, 40, 80)
 
 [sub_resource type="BoxMesh" id="WallNSM"]
 size = Vector3(2064, 256, 32)
@@ -96,10 +96,10 @@ size = Vector3(160, 16, 480)
 size = Vector3(240, 96, 200)
 
 [sub_resource type="BoxShape3D" id="CoverBigS"]
-size = Vector3(128, 64, 128)
+size = Vector3(128, 40, 128)
 
 [sub_resource type="BoxShape3D" id="CoverMidS"]
-size = Vector3(80, 64, 80)
+size = Vector3(80, 40, 80)
 
 [sub_resource type="BoxShape3D" id="WallNSS"]
 size = Vector3(2064, 256, 32)
@@ -273,7 +273,7 @@ surface_material_override/0 = SubResource("DeckMat")
 shape = SubResource("IslandS")
 
 [node name="Cover0" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 32, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, 0)
 
 [node name="Mesh" type="MeshInstance3D" parent="Cover0"]
 mesh = SubResource("CoverMidM")
@@ -283,7 +283,7 @@ surface_material_override/0 = SubResource("CoverMat")
 shape = SubResource("CoverMidS")
 
 [node name="Cover1" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 400, 32, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 400, 20, 0)
 
 [node name="Mesh" type="MeshInstance3D" parent="Cover1"]
 mesh = SubResource("CoverBigM")
@@ -293,7 +293,7 @@ surface_material_override/0 = SubResource("CoverMat")
 shape = SubResource("CoverBigS")
 
 [node name="Cover2" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -400, 32, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -400, 20, 0)
 
 [node name="Mesh" type="MeshInstance3D" parent="Cover2"]
 mesh = SubResource("CoverBigM")
@@ -303,7 +303,7 @@ surface_material_override/0 = SubResource("CoverMat")
 shape = SubResource("CoverBigS")
 
 [node name="Cover3" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 32, 260)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 20, 260)
 
 [node name="Mesh" type="MeshInstance3D" parent="Cover3"]
 mesh = SubResource("CoverBigM")
@@ -313,7 +313,7 @@ surface_material_override/0 = SubResource("CoverMat")
 shape = SubResource("CoverBigS")
 
 [node name="Cover4" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560, 32, -260)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560, 20, -260)
 
 [node name="Mesh" type="MeshInstance3D" parent="Cover4"]
 mesh = SubResource("CoverBigM")
@@ -323,7 +323,7 @@ surface_material_override/0 = SubResource("CoverMat")
 shape = SubResource("CoverBigS")
 
 [node name="Cover5" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 32, -260)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 560, 20, -260)
 
 [node name="Mesh" type="MeshInstance3D" parent="Cover5"]
 mesh = SubResource("CoverBigM")
@@ -333,7 +333,7 @@ surface_material_override/0 = SubResource("CoverMat")
 shape = SubResource("CoverBigS")
 
 [node name="Cover6" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560, 32, 260)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560, 20, 260)
 
 [node name="Mesh" type="MeshInstance3D" parent="Cover6"]
 mesh = SubResource("CoverBigM")

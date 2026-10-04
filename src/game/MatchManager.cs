@@ -44,9 +44,12 @@ public partial class MatchManager : Node
         Map ??= new MapConfig();
         _roster = new Node3D { Name = "Fighters" };
         AddChild(_roster);
+        // Subscribe BEFORE StartMatch: BeginRound fires RoundStarted
+        // synchronously (including the first round), and a late
+        // subscription would silently miss it.
+        Rounds.RoundStarted += ResetRound;
         Rounds.StartMatch(PlayersPerTeam);
         SpawnAll();
-        Rounds.RoundStarted += ResetRound;
     }
 
     public override void _Process(double delta)

@@ -156,7 +156,7 @@ public class MapConfigTests
         Assertions.AssertThat(spots.Count).IsEqual(7);
         Assertions.AssertThat(sizes.Count).IsEqual(7);
         foreach (Vec s in sizes)
-            Assertions.AssertThat(s.Y).IsEqual(64f); // Spec: jumpable 64u covers.
+            Assertions.AssertThat(s.Y).IsEqual(40f); // Spec §7: jumpable 40u covers.
         float best = 0f;
         foreach (Vec a in ct)
             foreach (Vec b in t)
@@ -368,7 +368,7 @@ public class MapConfigTests
         Assertions.AssertThat(Regex.Matches(tscn, @"\bTSpawn\d").Count).IsEqual(7);
         Assertions.AssertThat(Regex.Matches(tscn, @"WeaponId\s*=").Count).IsEqual(5);
         // Geometry classes: jumpable covers + tall walls.
-        Assertions.AssertThat(tscn.Contains("Vector3(128, 64, 128)")).IsTrue();
+        Assertions.AssertThat(tscn.Contains("Vector3(128, 40, 128)")).IsTrue();
         Assertions.AssertThat(tscn.Contains("256")).IsTrue();
     }
 
