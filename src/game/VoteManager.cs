@@ -23,6 +23,9 @@ public sealed class VoteManager
 
     public bool IsOpen { get; private set; }
 
+    /// <summary>Ballot options in listed (tie-break) order.</summary>
+    public IReadOnlyList<string> Options => _options;
+
     /// <summary>Winning option, null until the vote closes.</summary>
     public string? Winner { get; private set; }
 

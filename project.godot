@@ -12,6 +12,7 @@ config_version=5
 
 config/name="FrutaCS"
 config/features=PackedStringArray("4.7", "GL Compatibility", "C#")
+run/main_scene="res://src/ui/MainMenu.tscn"
 
 [dotnet]
 

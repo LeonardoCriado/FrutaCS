@@ -566,6 +566,8 @@ public partial class Bot : CharacterBody3D
             {
                 // First surface is flesh: same staged damage rules as players.
                 other.TakeDamage(_gunSim.DamageAt(impactDist, false, 0f));
+                if (other.IsDead)
+                    GetTree().CallGroup("match_manager", "OnFighterFrag", this, other);
             }
             else if ((GodotObject)hit["collider"] is PlayerBody player
                 && player.Team != Team && !player.IsDead)
@@ -573,6 +575,8 @@ public partial class Bot : CharacterBody3D
                 // Bot-vs-player billing (Task 6 left it unbilled): the same
                 // staged damage the player build applies to bots.
                 player.TakeDamage(_gunSim.DamageAt(impactDist, false, 0f));
+                if (player.IsDead)
+                    GetTree().CallGroup("match_manager", "OnFighterFrag", this, player);
             }
             // Walls stop the bullet (no bot wallbang: simplification, disclosed).
         }

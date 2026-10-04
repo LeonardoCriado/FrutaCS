@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3]
+[gd_scene load_steps=42 format=3]
 
 [ext_resource type="Script" path="res://src/game/MatchManager.cs" id="1"]
 [ext_resource type="PackedScene" path="res://src/player/PlayerBody.tscn" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://src/maps/MapConfig.cs" id="4"]
 [ext_resource type="Script" path="res://src/maps/WeaponPickup.cs" id="5"]
 [ext_resource type="Resource" path="res://src/maps/fy_pileta_nav.tres" id="6"]
+[ext_resource type="PackedScene" path="res://src/ui/Hud.tscn" id="7"]
 
 [sub_resource type="Environment" id="Env_1"]
 background_mode = 1
@@ -488,3 +489,5 @@ PlayersPerTeam = 7
 Map = SubResource("MapCfg")
 PlayerScene = ExtResource("2")
 BotScene = ExtResource("3")
+
+[node name="Hud" parent="." instance=ExtResource("7")]

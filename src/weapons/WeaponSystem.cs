@@ -345,12 +345,20 @@ public partial class WeaponSystem : Node3D
         if (collider is PlayerBody player)
         {
             if (player != _body && !player.IsDead && player.Team != myTeam)
+            {
                 player.TakeDamage(damage);
+                if (player.IsDead && _body != null)
+                    GetTree().CallGroup("match_manager", "OnFighterFrag", _body, player);
+            }
         }
         else if (collider is Bot bot)
         {
             if (!bot.IsDead && bot.Team != myTeam)
+            {
                 bot.TakeDamage(damage);
+                if (bot.IsDead && _body != null)
+                    GetTree().CallGroup("match_manager", "OnFighterFrag", _body, bot);
+            }
         }
     }
 

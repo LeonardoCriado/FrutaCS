@@ -1,5 +1,7 @@
 using Godot;
 
+using FrutaCS.UI;
+
 namespace FrutaCS.Player;
 
 /// <summary>Shared input action names, registered at runtime (see EnsureInputActions).</summary>
@@ -119,6 +121,7 @@ public partial class PlayerBody : CharacterBody3D
     public override void _Ready()
     {
         EnsureInputActions();
+        MouseSensitivity = GameSettings.MouseSensitivity;
         AddToGroup("players"); // Lets Bot AI sense the player as an enemy.
         _params = Config != null ? Config.ToParams() : MovementParams.Default;
         Head = GetNode<Node3D>("Head");
