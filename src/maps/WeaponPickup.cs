@@ -94,7 +94,7 @@ public partial class WeaponPickup : Area3D
             return;
         if (Grab() == "")
             return;
-        player.ArmedWeapon?.Equip(data);
+        player.GiveWeapon(data, true);
     }
 
     private void PaintTierColor()

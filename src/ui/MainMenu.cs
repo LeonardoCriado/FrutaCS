@@ -3,14 +3,15 @@ using Godot;
 namespace FrutaCS.UI;
 
 /// <summary>
-/// Milestone-1 main menu: JUGAR opens fy_pileta, the sensitivity slider
-/// feeds <see cref="GameSettings"/> (which PlayerBody reads on spawn),
-/// SALIR quits. All art is original flat fruta styling; no third-party
-/// assets.
+/// Milestone-1 main menu: JUGAR opens fy_pileta, RANGO DE PRUEBAS opens
+/// the workshop-style weapon range, the sensitivity slider feeds
+/// <see cref="GameSettings"/> (which PlayerBody reads on spawn), SALIR
+/// quits. All art is original flat fruta styling; no third-party assets.
 /// </summary>
 public partial class MainMenu : Control
 {
     private const string MapScenePath = "res://src/maps/fy_pileta.tscn";
+    private const string RangeScenePath = "res://scenes/WeaponRange.tscn";
 
     private HSlider _sens;
     private Label _sensValue;
@@ -19,6 +20,7 @@ public partial class MainMenu : Control
     {
         Input.MouseMode = Input.MouseModeEnum.Visible;
         GetNode<Button>("%PlayButton").Pressed += OnPlay;
+        GetNode<Button>("%RangeButton").Pressed += OnRange;
         GetNode<Button>("%QuitButton").Pressed += OnQuit;
         _sens = GetNode<HSlider>("%SensSlider");
         _sensValue = GetNode<Label>("%SensValue");
@@ -31,6 +33,8 @@ public partial class MainMenu : Control
     }
 
     private void OnPlay() => GetTree().ChangeSceneToFile(MapScenePath);
+
+    private void OnRange() => GetTree().ChangeSceneToFile(RangeScenePath);
 
     private void OnQuit() => GetTree().Quit();
 

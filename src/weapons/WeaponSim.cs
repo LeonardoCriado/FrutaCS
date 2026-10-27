@@ -114,6 +114,19 @@ public sealed class WeaponSim
     public int DamageAt(float distU, int walls, float wallU)
         => DamageAt(distU, walls, wallU, false);
 
+    /// <summary>
+    /// Headshot path: 1.6 hitgroup behavior (TraceAttack) — the staged
+    /// body damage times <see cref="WeaponStats.HeadshotMult"/> (x4 rifles/
+    /// deagle, x1 knife so melee is unaffected).
+    /// </summary>
+    public int DamageAt(float distU, int walls, float wallU, bool secondaryAttack, bool headshot)
+    {
+        int dmg = DamageAt(distU, walls, wallU, secondaryAttack);
+        if (headshot && dmg > 0)
+            dmg = (int)(dmg * _stats.HeadshotMult);
+        return dmg;
+    }
+
     public int DamageAt(float distU, int walls, float wallU, bool secondaryAttack)
     {
         if (distU < 0f)

@@ -56,6 +56,13 @@ theme_override_font_sizes/font_size = 28
 text = "JUGAR"
 size_flags_horizontal = 4
 
+[node name="RangeButton" type="Button" parent="Center/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+theme_override_font_sizes/font_size = 22
+text = "RANGO DE PRUEBAS"
+size_flags_horizontal = 4
+
 [node name="SensRow" type="HBoxContainer" parent="Center/VBox"]
 theme_override_constants/separation = 12
 alignment = 1
