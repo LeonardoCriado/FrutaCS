@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "game-feel": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/disciplines/game-feel/SKILL.md",
+      "computedHash": "190f588bf95cd2b06b737465a29deaf82b20f185248bad827d1c3135d8953a99"
+    },
+    "godot-ai-navigation": {
+      "source": "thedivergentai/game-dev-agentic-skills",
+      "sourceType": "github",
+      "skillPath": "skills/godot-ai-navigation/SKILL.md",
+      "computedHash": "ce696d43a13a0a00bdb2411cf6ae8d2f25e4f5c19bab210f585d4f84efdaf0fb"
+    },
+    "godot-csharp": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/godot/godot-csharp/SKILL.md",
+      "computedHash": "5fe6906c8b2b00677fb39eb0da080c61888ad13b123d64631af842d257cd6da7"
+    },
+    "godot-genre-shooter-fps": {
+      "source": "thedivergentai/game-dev-agentic-skills",
+      "sourceType": "github",
+      "skillPath": "skills/godot-genre-shooter-fps/SKILL.md",
+      "computedHash": "32c3f7a34bee5c2a1932c1033f2b9ee0184e28d143e061cdd8a3723893b88482"
+    },
+    "godot-physics": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/godot/godot-physics/SKILL.md",
+      "computedHash": "ae57b54ea22a9b88118310e3532cd96790b756b0f751a5e4b5539288bd80c222"
+    }
+  }
+}

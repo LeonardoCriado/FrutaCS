@@ -84,14 +84,27 @@ public class PlayerWeaponGlueTests
     }
 
     [TestCase]
-    public void WeaponViewSceneSharesOneMaterial()
+    public void WeaponViewSceneHostsScriptSoundAndMuzzle()
     {
         string tscn = ReadRepo(Path.Combine("src", "weapons", "WeaponView.tscn"));
         Assertions.AssertThat(tscn.Contains("res://src/weapons/WeaponSystem.cs")).IsTrue();
-        int materials = tscn.Split("type=\"StandardMaterial3D\"").Length - 1;
-        Assertions.AssertThat(materials).IsEqual(1);
+        Assertions.AssertThat(tscn.Contains("Viewmodel")).IsTrue();
         Assertions.AssertThat(tscn.Contains("FireSound")).IsTrue();
         Assertions.AssertThat(tscn.Contains("Muzzle")).IsTrue();
+    }
+
+    [TestCase]
+    public void EveryWeaponHasACustomViewmodelPose()
+    {
+        // Low-poly silhouettes are built at runtime (WeaponViewmodel); the
+        // shared-box placeholder must not come back for a known weapon id.
+        foreach (string id in WeaponData.AllIds)
+        {
+            Assertions.AssertThat(WeaponViewmodel.HasCustomModel(id)).IsTrue();
+            WeaponPose pose = WeaponViewmodel.PoseFor(id);
+            Assertions.AssertThat(pose.Muzzle.Z < 0f).IsTrue();
+        }
+        Assertions.AssertThat(WeaponViewmodel.HasCustomModel("unknown")).IsFalse();
     }
 
     [TestCase]

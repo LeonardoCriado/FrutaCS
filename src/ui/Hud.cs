@@ -44,6 +44,15 @@ public partial class Hud : CanvasLayer
     private VBoxContainer _voteOptions;
     private Label _voteTimer;
     private Label _voteResult;
+    private PanelContainer _pausePanel;
+    private Label _slotsLabel;
+    private ColorRect _dmgFlash;
+    private Label _threatArrow;
+    private AudioStreamPlayer _hurtPlayer;
+    private AudioStreamWav _hurtStream;
+    private Vector3 _lastThreat = Vector3.Zero;
+    private float _threatLeft;
+    private float _flashLeft;
 
     private readonly Dictionary<string, Label> _voteCounts = new();
     private int _boardSig = -1;
@@ -64,6 +73,7 @@ public partial class Hud : CanvasLayer
 
     public override void _Ready()
     {
+        ProcessMode = ProcessModeEnum.Always;
         _score = GetNode<Label>("%ScoreLabel");
         _roundTimer = GetNode<Label>("%RoundTimerLabel");
         _matchClock = GetNode<Label>("%MatchClockLabel");
@@ -97,17 +107,273 @@ public partial class Hud : CanvasLayer
         _lastScoreT = _match.Rounds.ScoreT;
         _match.Rounds.PhaseChanged += OnPhaseChanged;
         _match.Vote.VoteClosed += OnVoteClosed;
+        OutlineHudTexts();
+        BuildHelpLabel();
+        BuildDamageFx();
+        BuildPausePanel();
+        if (_player != null)
+            _player.Damaged += OnPlayerDamaged;
         ShowMsg("¡Ronda 1! ¡A la pileta!");
+    }
+
+    /// <summary>
+    /// Dark outline on every HUD text: the map is bright (white deck/walls,
+    /// blue pool) and plain light labels wash out against it.
+    /// </summary>
+    private void OutlineHudTexts()
+    {
+        Outline(_score);
+        Outline(_roundTimer);
+        Outline(_matchClock);
+        Outline(_health);
+        Outline(_armor);
+        Outline(_weapon);
+        Outline(_ammo);
+        Outline(_centerMsg);
+        Outline(_deadMsg);
+    }
+
+    private static void Outline(Label label, int size = 8)
+    {
+        if (label == null)
+            return;
+        label.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
+        label.AddThemeConstantOverride("outline_size", size);
     }
 
     public override void _Input(InputEvent @event)
     {
+        if (@event.IsActionPressed("ui_cancel"))
+        {
+            TogglePause();
+            GetViewport().SetInputAsHandled(); // PlayerBody must not re-release.
+            return;
+        }
         if (@event is not InputEventKey key || !key.Pressed || key.Echo)
+            return;
+        if (GetTree().Paused)
             return;
         if (key.PhysicalKeycode == Key.Tab)
             ToggleScoreboard();
         else if (_match != null && _match.Vote.IsOpen && _votePanel.Visible)
             VoteKey(key.PhysicalKeycode);
+    }
+
+    /// <summary>ESC: freeze the offline match and offer resume/quit.</summary>
+    public void TogglePause()
+    {
+        if (_match == null || _pausePanel == null)
+            return;
+        if (GetTree().Paused)
+            Resume();
+        else
+            Pause();
+    }
+
+    /// <summary>Freeze timers/bots and show the pause panel.</summary>
+    public void Pause()
+    {
+        _pausePanel.Show();
+        GetTree().Paused = true;
+        Input.MouseMode = Input.MouseModeEnum.Visible;
+    }
+
+    /// <summary>Back into the match (vote keeps the mouse when open).</summary>
+    public void Resume()
+    {
+        _pausePanel.Hide();
+        GetTree().Paused = false;
+        if (_match == null || !_match.Vote.IsOpen)
+            Input.MouseMode = Input.MouseModeEnum.Captured;
+        else
+            Input.MouseMode = Input.MouseModeEnum.Visible;
+    }
+
+    private void QuitToMenu()
+    {
+        GetTree().Paused = false;
+        Input.MouseMode = Input.MouseModeEnum.Visible;
+        GetTree().ChangeSceneToFile("res://src/ui/MainMenu.tscn");
+    }
+
+    private void BuildHelpLabel()
+    {        _slotsLabel = new Label { Text = "" };
+        _slotsLabel.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
+        _slotsLabel.Position = new Vector2(-260f, -52f);
+        _slotsLabel.AddThemeFontSizeOverride("font_size", 16);
+        _slotsLabel.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.4f, 1f));
+        Outline(_slotsLabel, 6);
+        AddChild(_slotsLabel);
+        var help = new Label
+        {
+            Text = "1 Rifle/AWP · 2 Deagle · 3 Cuchillo · Q última · ESC pausa",
+        };
+        help.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
+        help.Position = new Vector2(-260f, -28f);
+        help.AddThemeFontSizeOverride("font_size", 14);
+        help.AddThemeColorOverride("font_color", new Color(1f, 1f, 1f, 1f));
+        Outline(help, 6);
+        AddChild(help);
+    }
+
+    private static string SlotName(string weaponId) => weaponId switch
+    {
+        "" => "---",
+        "knife" => "CUCHILLO",
+        _ => weaponId.ToUpper(),
+    };
+
+    private void UpdateSlotsLine()
+    {
+        if (_slotsLabel == null)
+            return;
+        if (_player == null)
+        {
+            _slotsLabel.Text = "";
+            return;
+        }
+        string[] parts = new string[3];
+        for (int i = 0; i < 3; i++)
+        {
+            string name = SlotName(_player.GetSlotWeaponId(i));
+            parts[i] = i == _player.CurrentSlot ? $"[{i + 1} {name}]" : $"{i + 1} {name}";
+        }
+        _slotsLabel.Text = string.Join(" · ", parts);
+    }
+
+    /// <summary>
+    /// Damage-taken feedback: full-screen red flash, threat arrow parked
+    /// between the crosshair and the attacker's screen position, dull
+    /// thud. Answers "who killed me from where".
+    /// </summary>
+    private void BuildDamageFx()
+    {
+        _dmgFlash = new ColorRect
+        {
+            Color = new Color(0.8f, 0.05f, 0.05f, 0f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        _dmgFlash.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        AddChild(_dmgFlash);
+        _threatArrow = new Label
+        {
+            Text = "▲",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CustomMinimumSize = new Vector2(32f, 32f),
+            PivotOffset = new Vector2(16f, 16f),
+        };
+        _threatArrow.AddThemeFontSizeOverride("font_size", 30);
+        _threatArrow.AddThemeColorOverride("font_color", new Color(1f, 0.2f, 0.15f));
+        _threatArrow.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.9f));
+        _threatArrow.AddThemeConstantOverride("outline_size", 6);
+        AddChild(_threatArrow);
+        _threatArrow.Hide();
+        _hurtStream = MakeThud();
+        _hurtPlayer = new AudioStreamPlayer();
+        AddChild(_hurtPlayer);
+    }
+
+    private static AudioStreamWav MakeThud()
+    {
+        const int mixRate = 22050;
+        const float durSec = 0.18f;
+        int frames = (int)(mixRate * durSec);
+        var rng = new RandomNumberGenerator();
+        rng.Seed = 77;
+        byte[] data = new byte[frames * 2];
+        for (int i = 0; i < frames; i++)
+        {
+            float time = (float)i / mixRate;
+            float tone = Mathf.Sin(Mathf.Tau * 140f * time) * Mathf.Exp(-time * 25f);
+            float noise = rng.RandfRange(-1f, 1f) * Mathf.Exp(-time * 40f) * 0.25f;
+            float s = Mathf.Clamp(tone * 0.7f + noise, -1f, 1f);
+            short v = (short)(s * short.MaxValue);
+            data[i * 2] = (byte)(v & 0xFF);
+            data[i * 2 + 1] = (byte)((v >> 8) & 0xFF);
+        }
+        return new AudioStreamWav
+        {
+            Format = AudioStreamWav.FormatEnum.Format16Bits,
+            MixRate = mixRate,
+            Stereo = false,
+            Data = data,
+        };
+    }
+
+    private void OnPlayerDamaged(Vector3 fromPos)
+    {
+        _lastThreat = fromPos;
+        _threatLeft = 1.2f;
+        _flashLeft = 0.4f;
+        if (_hurtPlayer != null)
+        {
+            _hurtPlayer.Stream = _hurtStream;
+            _hurtPlayer.Play();
+        }
+    }
+
+    private void UpdateDamageFx(float dt)
+    {
+        if (_dmgFlash != null)
+        {
+            float alpha = 0f;
+            if (_flashLeft > 0f)
+            {
+                _flashLeft -= dt;
+                alpha = 0.45f * Mathf.Clamp(_flashLeft / 0.4f, 0f, 1f);
+            }
+            _dmgFlash.Color = new Color(0.8f, 0.05f, 0.05f, alpha);
+        }
+        if (_threatArrow == null)
+            return;
+        if (_threatLeft <= 0f || _player == null || _player.Camera == null)
+        {
+            _threatArrow.Hide();
+            return;
+        }
+        _threatLeft -= dt;
+        Camera3D cam = _player.Camera;
+        Vector2 center = GetViewport().GetVisibleRect().Size * 0.5f;
+        Vector2 screen = cam.UnprojectPosition(_lastThreat);
+        if (cam.IsPositionBehind(_lastThreat))
+            screen = center - (screen - center);
+        Vector2 dir = screen - center;
+        if (dir.Length() < 40f)
+            dir = Vector2.Up * 40f;
+        Vector2 edge = center + dir.Normalized() * 150f;
+        _threatArrow.Position = edge - new Vector2(16f, 16f);
+        _threatArrow.Rotation = dir.Angle() + Mathf.Pi * 0.5f;
+        var c = new Color(1f, 0.2f, 0.15f, Mathf.Clamp(_threatLeft / 1.2f, 0f, 1f));
+        _threatArrow.AddThemeColorOverride("font_color", c);
+        _threatArrow.Show();
+    }
+
+    private void BuildPausePanel()
+    {
+        _pausePanel = new PanelContainer();
+        _pausePanel.SetAnchorsPreset(Control.LayoutPreset.Center);
+        _pausePanel.Position = new Vector2(-220f, -150f);
+        _pausePanel.CustomMinimumSize = new Vector2(440f, 0f);
+        var vbox = new VBoxContainer();
+        vbox.AddThemeConstantOverride("separation", 10);
+        var title = new Label { Text = "PAUSA · la fruta espera" };
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        title.AddThemeFontSizeOverride("font_size", 26);
+        var hint = new Label { Text = "1/2/3 cambia de arma · Q última · TAB tabla" };
+        hint.HorizontalAlignment = HorizontalAlignment.Center;
+        hint.AddThemeFontSizeOverride("font_size", 14);
+        var resume = new Button { Text = "SEGUIR JUGANDO (ESC)" };
+        resume.Pressed += Resume;
+        var quit = new Button { Text = "SALIR AL MENÚ" };
+        quit.Pressed += QuitToMenu;
+        vbox.AddChild(title);
+        vbox.AddChild(hint);
+        vbox.AddChild(resume);
+        vbox.AddChild(quit);
+        _pausePanel.AddChild(vbox);
+        AddChild(_pausePanel);
+        _pausePanel.Hide();
     }
 
     /// <summary>Show/hide the TAB scoreboard (rows rebuild on next frame when shown).</summary>
@@ -145,6 +411,8 @@ public partial class Hud : CanvasLayer
         float dt = (float)delta;
         UpdateTopBar();
         UpdateBottom();
+        UpdateSlotsLine();
+        UpdateDamageFx(dt);
         UpdateScoreEvents();
         UpdateMsg(dt);
         UpdateScoreboard();
@@ -329,7 +597,11 @@ public partial class Hud : CanvasLayer
 
     private void OpenVotePanel()
     {
-        foreach (Node child in _voteOptions.GetChildren())
+        if (GetTree().Paused && _pausePanel != null)
+        {
+            _pausePanel.Hide();
+            GetTree().Paused = false;
+        }        foreach (Node child in _voteOptions.GetChildren())
         {
             _voteOptions.RemoveChild(child);
             child.QueueFree();
@@ -401,6 +673,7 @@ public partial class Hud : CanvasLayer
         if (_reloadLeft <= 0f)
         {
             _reloadLeft = -1f;
+            GetTree().Paused = false;
             GetTree().ReloadCurrentScene();
         }
     }

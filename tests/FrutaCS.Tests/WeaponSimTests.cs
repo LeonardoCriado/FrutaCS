@@ -126,9 +126,19 @@ public class WeaponSimTests
     }
 
     [TestCase]
-    public void FpsIndependent()
+    public void HeadshotMultipliesBodyDamage()
     {
-        var sim60 = new WeaponSim(AkLikeStats());
+        var sim = new WeaponSim(AkLikeStats()); // HeadshotMult x4.
+        int body = sim.DamageAt(100f, false, 0f);
+        int head = sim.DamageAt(100f, 0, 0f, false, true);
+        Assertions.AssertThat(head).IsEqual(body * 4);
+        // Zero-damage stays zero (no 0 * mult phantom damage).
+        Assertions.AssertThat(sim.DamageAt(100f, 9, 10f, false, true)).IsEqual(0);
+    }
+
+    [TestCase]
+    public void FpsIndependent()
+    {        var sim60 = new WeaponSim(AkLikeStats());
         for (int i = 0; i < 60; i++)
             sim60.Tick(1f / 60f);
         var sim120 = new WeaponSim(AkLikeStats());

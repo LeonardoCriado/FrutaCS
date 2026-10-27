@@ -72,6 +72,7 @@ public partial class Bot : CharacterBody3D
 
     private readonly BotBrain _brain = new();
     private readonly MovementSim _sim = new();
+    private BotRig _rig;
     private MovementParams _moveParams;
     private BotParams _params;
     private WeaponSim _gunSim;
@@ -154,9 +155,10 @@ public partial class Bot : CharacterBody3D
         var shape = GetNodeOrNull<CollisionShape3D>("CollisionShape3D");
         if (shape != null)
             shape.SetDeferred("disabled", false);
-        var body = GetNodeOrNull<MeshInstance3D>("Body");
+        var body = GetNodeOrNull<Node3D>("Body");
         if (body != null)
             body.Show();
+        GetNodeOrNull<Label3D>("Nameplate")?.Show();
         SetPhysicsProcess(true);
         _sim.SyncFromEngine(Vector3.Zero, true);
         Velocity = Vector3.Zero;
@@ -244,7 +246,10 @@ public partial class Bot : CharacterBody3D
         // stale and thrashes on goal changes. The node stays for the
         // scene-shape test and future avoidance work.
         _patrolPoint = PickPatrolPoint();
-        PaintTeamColor();
+        // Low-poly humanoid under "Body" (feet at the origin, same 72 u
+        // collision capsule): replaces the old grey capsule visual.
+        _rig = BotModel.Build(GetNodeOrNull<Node3D>("Body"), Team);
+        BuildNameplate();
         _query.Exclude = new Godot.Collections.Array<Rid> { GetRid() };
     }
 
@@ -504,6 +509,9 @@ public partial class Bot : CharacterBody3D
             _unstickPoint = PickUnstickPoint();
             _unstickSec = UnstickDetourSec;
         }
+
+        // Walk cycle on the humanoid rig (frozen while standing still).
+        _rig?.Animate(h.Length(), dt);
     }
 
     private void MaybeGrab(BotDecision decision)
@@ -599,7 +607,7 @@ public partial class Bot : CharacterBody3D
             {
                 // Bot-vs-player billing (Task 6 left it unbilled): the same
                 // staged damage the player build applies to bots.
-                player.TakeDamage(_gunSim.DamageAt(impactDist, false, 0f));
+                player.TakeDamage(_gunSim.DamageAt(impactDist, false, 0f), GlobalPosition);
                 if (player.IsDead)
                     GetTree().CallGroup("match_manager", "OnFighterFrag", this, player);
             }
@@ -674,16 +682,26 @@ public partial class Bot : CharacterBody3D
         return (GodotObject)hit["collider"] is not StaticBody3D;
     }
 
-    private void PaintTeamColor()
+    /// <summary>
+    /// Floating team-colored name (billboard, depth-tested so walls hide
+    /// it): target acquisition at 600u+ on the bright map, where the 32u
+    /// capsules alone are dots. Orange = enemy for the CT player.
+    /// </summary>
+    private void BuildNameplate()
     {
-        var body = GetNodeOrNull<MeshInstance3D>("Body");
-        if (body == null)
-            return;
-        var mat = new StandardMaterial3D
+        var label = new Label3D
         {
-            AlbedoColor = Team == 0 ? new Color(0.2f, 0.45f, 0.9f) : new Color(0.9f, 0.35f, 0.2f),
+            Name = "Nameplate",
+            Text = Name,
+            FontSize = 48,
+            PixelSize = 0.3f,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            OutlineSize = 8,
+            OutlineModulate = new Color(0f, 0f, 0f),
+            Modulate = Team == 0 ? new Color(0.45f, 0.7f, 1f) : new Color(1f, 0.6f, 0.35f),
         };
-        body.SetSurfaceOverrideMaterial(0, mat);
+        AddChild(label);
+        label.Position = new Vector3(0f, 88f, 0f);
     }
 
     private void Die()
@@ -693,9 +711,10 @@ public partial class Bot : CharacterBody3D
         var shape = GetNodeOrNull<CollisionShape3D>("CollisionShape3D");
         if (shape != null)
             shape.SetDeferred("disabled", true);
-        var body = GetNodeOrNull<MeshInstance3D>("Body");
+        var body = GetNodeOrNull<Node3D>("Body");
         if (body != null)
             body.Hide();
+        GetNodeOrNull<Label3D>("Nameplate")?.Hide();
         SetPhysicsProcess(false);
         GetTree().CallGroup("match_manager", "OnFighterDown", Team, this);
     }

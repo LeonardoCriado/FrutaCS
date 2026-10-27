@@ -124,6 +124,7 @@ public partial class MatchManager : Node
             return;
         }
         var sidearm = FrutaCS.Weapons.WeaponData.Get("deagle");
+        var knife = FrutaCS.Weapons.WeaponData.Get("knife");
         var player = PlayerScene.Instantiate<PlayerBody>();
         player.Name = "Vos";
         player.Team = 0;
@@ -131,8 +132,7 @@ public partial class MatchManager : Node
         _roster.AddChild(player);
         player.GlobalPosition = Map.SpawnsCT[0];
         FaceCenter(player, Map.SpawnsCT[0]);
-        if (sidearm != null)
-            player.ArmedWeapon?.Equip(sidearm);
+        player.ResetBaseLoadout(sidearm, knife);
         Track(player, Map.SpawnsCT[0]);
 
         for (int i = 0; i < 6; i++)
@@ -170,6 +170,7 @@ public partial class MatchManager : Node
     public void ResetRound()
     {
         var sidearm = FrutaCS.Weapons.WeaponData.Get("deagle");
+        var knife = FrutaCS.Weapons.WeaponData.Get("knife");
         foreach (Node3D fighter in _fighters)
         {
             Vector3 spawn = _spawns[fighter];
@@ -177,8 +178,7 @@ public partial class MatchManager : Node
             {
                 player.Respawn(spawn);
                 FaceCenter(player, spawn);
-                if (sidearm != null)
-                    player.ArmedWeapon?.Equip(sidearm);
+                player.ResetBaseLoadout(sidearm, knife);
             }
             else if (fighter is Bot bot)
             {
